@@ -1,6 +1,6 @@
 # Porra Mundial 2026
 
-Porra mundialista para empresa (Lexsys & SimplyLegal): cada participante
+Porra mundialista para jugar con amigos y familia: cada participante
 pronostica los partidos, suma puntos según su acierto y compite en una tabla
 de posiciones que se actualiza en vivo.
 
@@ -16,8 +16,8 @@ de posiciones que se actualiza en vivo.
 
 ## Arquitectura
 
-- **Auth:** magic link restringido por dominio (`@lexsys.ai` y SimplyLegal).
-  La allowlist se valida en un trigger de Postgres al crear el usuario.
+- **Auth:** magic link con registro abierto. El acceso a cada grupo es por
+  invitación (no por dominio).
 - **Datos:** `profiles`, `teams`, `matches`, `predictions`, `special_bets`,
   `app_settings`. Toda la seguridad vive en Row Level Security.
 - **Cierre de pronósticos:** no se guarda como flag; se deriva de
@@ -70,3 +70,9 @@ en el SQL editor (o `supabase db push`).
 - [ ] Fase 2 — Eliminatorias progresivas, apuestas especiales, panel admin.
 - [ ] Fase 3 — Sync con API + recordatorios (pg_cron).
 - [ ] Fase 4 — Pulido de portafolio: animaciones, datos demo, diagrama.
+
+## Créditos
+
+Iconos:
+- Trofeo (copa mundial) por [BankSeeNgern](https://www.flaticon.es/iconos-gratis/copa-mundial) — Flaticon.
+- Balón (pelota) por [Freepik](https://www.flaticon.es/iconos-gratis/pelota) — Flaticon.

@@ -1,12 +1,10 @@
 -- Porra Mundial 2026 — esquema inicial
--- Tablas + RLS + allowlist de dominios (Lexsys + SimplyLegal).
+-- Tablas + RLS.
 -- Aplicar en el SQL editor de Supabase o con `supabase db push`.
 
 -- =========================================================
 -- Tipos
 -- =========================================================
-create type public.company as enum ('lexsys', 'simplylegal');
-
 create type public.match_phase as enum (
   'grupos',
   'dieciseisavos',
@@ -28,7 +26,6 @@ create table public.profiles (
   id           uuid primary key references auth.users (id) on delete cascade,
   email        text not null unique,
   display_name text,
-  company      public.company not null,
   is_admin     boolean not null default false,
   created_at   timestamptz not null default now()
 );
@@ -103,44 +100,22 @@ create table public.app_settings (
 insert into public.app_settings (id) values (1);
 
 -- =========================================================
--- Allowlist de dominios + alta de perfil
+-- Alta de perfil
 -- =========================================================
 
--- Devuelve la empresa según el dominio del correo, o null si no está permitido.
--- TODO: confirmar el dominio real de SimplyLegal.
-create or replace function public.company_for_email(email text)
-returns public.company
-language sql
-immutable
-as $$
-  select case
-    when lower(email) like '%@lexsys.ai' then 'lexsys'::public.company
-    when lower(email) like '%@simplylegal.es' then 'simplylegal'::public.company  -- TODO: dominio real
-    else null
-  end;
-$$;
-
--- Al crear un usuario en auth: valida dominio (rechaza si no permitido) y crea su perfil.
+-- Al crear un usuario en auth, crea su perfil (registro abierto).
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  resolved_company public.company;
 begin
-  resolved_company := public.company_for_email(new.email);
-  if resolved_company is null then
-    raise exception 'Correo no permitido: solo cuentas de Lexsys o SimplyLegal';
-  end if;
-
-  insert into public.profiles (id, email, display_name, company)
+  insert into public.profiles (id, email, display_name)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1)),
-    resolved_company
+    coalesce(new.raw_user_meta_data ->> 'name', split_part(new.email, '@', 1))
   );
   return new;
 end;
