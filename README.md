@@ -18,8 +18,13 @@ de posiciones que se actualiza en vivo.
 
 - **Auth:** magic link con registro abierto. El acceso a cada grupo es por
   invitación (no por dominio).
-- **Datos:** `profiles`, `teams`, `matches`, `predictions`, `special_bets`,
-  `app_settings`. Toda la seguridad vive en Row Level Security.
+- **Multicliente:** cualquiera crea o se une a un **grupo** (`pools`) con un
+  código de invitación; cada grupo tiene su propia tabla. Los datos del torneo
+  (`teams`, `matches`) son globales.
+- **Pronósticos:** cada usuario tiene un set **por defecto** y puede
+  **sobrescribirlo por grupo** (`predictions.pool_id` null = default).
+- **Datos:** `profiles`, `teams`, `matches`, `pools`, `pool_members`,
+  `predictions`, `special_bets`, `app_settings`. Seguridad en Row Level Security.
 - **Cierre de pronósticos:** no se guarda como flag; se deriva de
   `matches.kickoff_at` directamente en las políticas RLS.
 - **Resultados:** un job (`pg_cron` + Edge Function) consulta la API y

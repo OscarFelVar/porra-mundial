@@ -1,5 +1,5 @@
--- Porra Mundial 2026 — esquema inicial
--- Tablas + RLS.
+-- Porra Mundial 2026 — esquema inicial (multicliente)
+-- Tablas + RLS. Grupos de porra (pools) con pronósticos default + override por grupo.
 -- Aplicar en el SQL editor de Supabase o con `supabase db push`.
 
 -- =========================================================
@@ -17,6 +17,8 @@ create type public.match_phase as enum (
 
 create type public.match_status as enum ('scheduled', 'live', 'finished');
 
+create type public.pool_role as enum ('owner', 'member');
+
 -- =========================================================
 -- Tablas
 -- =========================================================
@@ -26,11 +28,11 @@ create table public.profiles (
   id           uuid primary key references auth.users (id) on delete cascade,
   email        text not null unique,
   display_name text,
-  is_admin     boolean not null default false,
+  is_admin     boolean not null default false,   -- admin global (carga resultados del torneo)
   created_at   timestamptz not null default now()
 );
 
--- Selecciones
+-- Selecciones (datos globales del torneo)
 create table public.teams (
   id          uuid primary key default gen_random_uuid(),
   external_id text unique,
@@ -42,7 +44,7 @@ create table public.teams (
   created_at  timestamptz not null default now()
 );
 
--- Partidos
+-- Partidos (datos globales del torneo)
 create table public.matches (
   id                 uuid primary key default gen_random_uuid(),
   external_id        text unique,   -- id de football-data.org (idempotencia del sync)
@@ -61,24 +63,52 @@ create table public.matches (
 create index matches_kickoff_idx on public.matches (kickoff_at);
 create index matches_phase_idx on public.matches (phase);
 
--- Pronósticos. El "cierre" no se guarda: se deriva de matches.kickoff_at.
+-- Grupos de porra (multicliente). Cada uno con su código de invitación y tope opcional.
+create table public.pools (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  invite_code text not null unique,
+  owner_id    uuid not null references public.profiles (id) on delete cascade,
+  max_members int,              -- null = sin tope
+  created_at  timestamptz not null default now()
+);
+
+-- Membresías de grupo
+create table public.pool_members (
+  pool_id   uuid not null references public.pools (id) on delete cascade,
+  user_id   uuid not null references public.profiles (id) on delete cascade,
+  role      public.pool_role not null default 'member',
+  joined_at timestamptz not null default now(),
+  primary key (pool_id, user_id)
+);
+
+create index pool_members_user_idx on public.pool_members (user_id);
+
+-- Pronósticos. pool_id null = set "por defecto" del usuario; pool_id no null = override de ese grupo.
+-- El "cierre" no se guarda: se deriva de matches.kickoff_at.
 create table public.predictions (
   id                 uuid primary key default gen_random_uuid(),
   user_id            uuid not null references public.profiles (id) on delete cascade,
   match_id           uuid not null references public.matches (id) on delete cascade,
+  pool_id            uuid references public.pools (id) on delete cascade,
   home_score         int not null,
   away_score         int not null,
   advancing_team_id  uuid references public.teams (id),  -- sólo si el pronóstico a 90' es empate (eliminatoria)
   points_awarded     int,                                -- null hasta que el partido finaliza
   created_at         timestamptz not null default now(),
-  updated_at         timestamptz not null default now(),
-  unique (user_id, match_id)
+  updated_at         timestamptz not null default now()
 );
 
--- Apuestas especiales (1 por usuario)
+create index predictions_match_idx on public.predictions (match_id);
+-- Un default por (usuario, partido); un override por (usuario, partido, grupo).
+create unique index predictions_default_uidx on public.predictions (user_id, match_id) where pool_id is null;
+create unique index predictions_pool_uidx on public.predictions (user_id, match_id, pool_id) where pool_id is not null;
+
+-- Apuestas especiales. Mismo patrón default + override por grupo.
 create table public.special_bets (
   id                uuid primary key default gen_random_uuid(),
-  user_id           uuid not null references public.profiles (id) on delete cascade unique,
+  user_id           uuid not null references public.profiles (id) on delete cascade,
+  pool_id           uuid references public.pools (id) on delete cascade,
   champion_team_id  uuid references public.teams (id),
   runnerup_team_id  uuid references public.teams (id),
   top_scorer        text,
@@ -87,8 +117,10 @@ create table public.special_bets (
   updated_at        timestamptz not null default now()
 );
 
--- Configuración global (singleton). Guarda también el resultado real de las
--- apuestas especiales para puntuarlas al final del torneo.
+create unique index special_bets_default_uidx on public.special_bets (user_id) where pool_id is null;
+create unique index special_bets_pool_uidx on public.special_bets (user_id, pool_id) where pool_id is not null;
+
+-- Configuración global del torneo (singleton): deadline de apuestas especiales y resultado real.
 create table public.app_settings (
   id                       int primary key default 1 check (id = 1),
   special_bets_deadline    timestamptz,
@@ -100,10 +132,8 @@ create table public.app_settings (
 insert into public.app_settings (id) values (1);
 
 -- =========================================================
--- Alta de perfil
+-- Alta de perfil (registro abierto)
 -- =========================================================
-
--- Al crear un usuario en auth, crea su perfil (registro abierto).
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -125,15 +155,78 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Helper de admin (SECURITY DEFINER para evitar recursión de RLS sobre profiles).
+-- =========================================================
+-- Helpers (SECURITY DEFINER para evitar recursión de RLS)
+-- =========================================================
 create or replace function public.is_admin()
-returns boolean
-language sql
-security definer
-set search_path = public
-stable
-as $$
+returns boolean language sql security definer set search_path = public stable as $$
   select coalesce((select is_admin from public.profiles where id = auth.uid()), false);
+$$;
+
+create or replace function public.is_pool_member(p_pool uuid)
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (select 1 from public.pool_members where pool_id = p_pool and user_id = auth.uid());
+$$;
+
+-- ¿auth.uid() comparte algún grupo con p_other?
+create or replace function public.shares_pool(p_other uuid)
+returns boolean language sql security definer set search_path = public stable as $$
+  select exists (
+    select 1
+    from public.pool_members m1
+    join public.pool_members m2 on m1.pool_id = m2.pool_id
+    where m1.user_id = auth.uid() and m2.user_id = p_other
+  );
+$$;
+
+-- =========================================================
+-- Crear / unirse a un grupo (SECURITY DEFINER: saltan RLS de forma controlada)
+-- =========================================================
+create or replace function public.create_pool(p_name text)
+returns public.pools
+language plpgsql security definer set search_path = public as $$
+declare
+  v_pool public.pools;
+begin
+  insert into public.pools (name, invite_code, owner_id)
+  values (p_name, upper(substr(md5(gen_random_uuid()::text), 1, 8)), auth.uid())
+  returning * into v_pool;
+
+  insert into public.pool_members (pool_id, user_id, role)
+  values (v_pool.id, auth.uid(), 'owner');
+
+  return v_pool;
+end;
+$$;
+
+create or replace function public.join_pool(p_code text)
+returns public.pools
+language plpgsql security definer set search_path = public as $$
+declare
+  v_pool  public.pools;
+  v_count int;
+begin
+  select * into v_pool from public.pools where invite_code = upper(p_code);
+  if v_pool.id is null then
+    raise exception 'Código de invitación inválido';
+  end if;
+
+  if exists (select 1 from public.pool_members where pool_id = v_pool.id and user_id = auth.uid()) then
+    return v_pool;  -- ya es miembro
+  end if;
+
+  if v_pool.max_members is not null then
+    select count(*) into v_count from public.pool_members where pool_id = v_pool.id;
+    if v_count >= v_pool.max_members then
+      raise exception 'Este grupo está lleno';
+    end if;
+  end if;
+
+  insert into public.pool_members (pool_id, user_id, role)
+  values (v_pool.id, auth.uid(), 'member');
+
+  return v_pool;
+end;
 $$;
 
 -- =========================================================
@@ -142,85 +235,118 @@ $$;
 alter table public.profiles enable row level security;
 alter table public.teams enable row level security;
 alter table public.matches enable row level security;
+alter table public.pools enable row level security;
+alter table public.pool_members enable row level security;
 alter table public.predictions enable row level security;
 alter table public.special_bets enable row level security;
 alter table public.app_settings enable row level security;
 
--- profiles: todos los autenticados ven perfiles (tabla de posiciones); cada quien edita el suyo.
-create policy "profiles_select_all" on public.profiles
-  for select to authenticated using (true);
+-- profiles: ves tu perfil y el de quienes comparten grupo contigo (para las tablas).
+create policy "profiles_select_shared" on public.profiles
+  for select to authenticated
+  using (id = auth.uid() or public.shares_pool(id) or public.is_admin());
 create policy "profiles_update_own" on public.profiles
   for update to authenticated using (id = auth.uid()) with check (id = auth.uid());
 
--- teams: lectura para autenticados; escritura sólo admin.
+-- teams / matches / app_settings: lectura para autenticados; escritura sólo admin global.
 create policy "teams_select_all" on public.teams
   for select to authenticated using (true);
 create policy "teams_admin_write" on public.teams
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- matches: lectura para autenticados; escritura sólo admin.
 create policy "matches_select_all" on public.matches
   for select to authenticated using (true);
 create policy "matches_admin_write" on public.matches
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- predictions:
---   ver: las propias siempre; ajenas sólo cuando el partido ya cerró (kickoff pasó).
---   crear/editar: sólo propias y sólo antes del cierre.
-create policy "predictions_select_own_or_locked" on public.predictions
-  for select to authenticated
-  using (
-    user_id = auth.uid()
-    or exists (select 1 from public.matches m where m.id = predictions.match_id and now() >= m.kickoff_at)
-    or public.is_admin()
-  );
-
-create policy "predictions_insert_own_before_lock" on public.predictions
-  for insert to authenticated
-  with check (
-    user_id = auth.uid()
-    and exists (select 1 from public.matches m where m.id = match_id and now() < m.kickoff_at)
-  );
-
-create policy "predictions_update_own_before_lock" on public.predictions
-  for update to authenticated
-  using (user_id = auth.uid())
-  with check (
-    user_id = auth.uid()
-    and exists (select 1 from public.matches m where m.id = match_id and now() < m.kickoff_at)
-  );
-
--- special_bets:
---   ver: las propias siempre; ajenas sólo tras el deadline.
---   crear/editar: propias y antes del deadline.
-create policy "special_bets_select_own_or_after_deadline" on public.special_bets
-  for select to authenticated
-  using (
-    user_id = auth.uid()
-    or exists (select 1 from public.app_settings s where s.special_bets_deadline is not null and now() >= s.special_bets_deadline)
-    or public.is_admin()
-  );
-
-create policy "special_bets_insert_own_before_deadline" on public.special_bets
-  for insert to authenticated
-  with check (
-    user_id = auth.uid()
-    and exists (select 1 from public.app_settings s where s.special_bets_deadline is null or now() < s.special_bets_deadline)
-  );
-
-create policy "special_bets_update_own_before_deadline" on public.special_bets
-  for update to authenticated
-  using (user_id = auth.uid())
-  with check (
-    user_id = auth.uid()
-    and exists (select 1 from public.app_settings s where s.special_bets_deadline is null or now() < s.special_bets_deadline)
-  );
-
--- app_settings: lectura para autenticados; escritura sólo admin.
 create policy "app_settings_select_all" on public.app_settings
   for select to authenticated using (true);
 create policy "app_settings_admin_write" on public.app_settings
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- NOTA: el motor de puntos (cálculo de points_awarded) llega en una migración
--- posterior; correrá como service_role / SECURITY DEFINER, así que omite RLS.
+-- pools: ves los grupos a los que perteneces. Crear es vía create_pool(); editar/borrar, el dueño.
+create policy "pools_select_member" on public.pools
+  for select to authenticated
+  using (public.is_pool_member(id) or owner_id = auth.uid() or public.is_admin());
+create policy "pools_update_owner" on public.pools
+  for update to authenticated using (owner_id = auth.uid()) with check (owner_id = auth.uid());
+create policy "pools_delete_owner" on public.pools
+  for delete to authenticated using (owner_id = auth.uid());
+
+-- pool_members: ves a los miembros de tus grupos. Unirse es vía join_pool(); puedes salir tú mismo.
+create policy "pool_members_select_member" on public.pool_members
+  for select to authenticated
+  using (public.is_pool_member(pool_id) or public.is_admin());
+create policy "pool_members_delete_self" on public.pool_members
+  for delete to authenticated using (user_id = auth.uid());
+
+-- predictions:
+--   ver: las propias siempre; ajenas sólo tras el cierre del partido y dentro de un grupo compartido.
+--   crear/editar: sólo propias, antes del cierre, y el override sólo en grupos donde eres miembro.
+create policy "predictions_select" on public.predictions
+  for select to authenticated
+  using (
+    user_id = auth.uid()
+    or public.is_admin()
+    or (
+      exists (select 1 from public.matches m where m.id = predictions.match_id and now() >= m.kickoff_at)
+      and (
+        (pool_id is null and public.shares_pool(user_id))
+        or (pool_id is not null and public.is_pool_member(pool_id))
+      )
+    )
+  );
+
+create policy "predictions_insert_own" on public.predictions
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and (pool_id is null or public.is_pool_member(pool_id))
+    and exists (select 1 from public.matches m where m.id = match_id and now() < m.kickoff_at)
+  );
+
+create policy "predictions_update_own" on public.predictions
+  for update to authenticated
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and (pool_id is null or public.is_pool_member(pool_id))
+    and exists (select 1 from public.matches m where m.id = match_id and now() < m.kickoff_at)
+  );
+
+-- special_bets: mismo criterio, con el deadline global en vez del kickoff.
+create policy "special_bets_select" on public.special_bets
+  for select to authenticated
+  using (
+    user_id = auth.uid()
+    or public.is_admin()
+    or (
+      exists (select 1 from public.app_settings s where s.special_bets_deadline is not null and now() >= s.special_bets_deadline)
+      and (
+        (pool_id is null and public.shares_pool(user_id))
+        or (pool_id is not null and public.is_pool_member(pool_id))
+      )
+    )
+  );
+
+create policy "special_bets_insert_own" on public.special_bets
+  for insert to authenticated
+  with check (
+    user_id = auth.uid()
+    and (pool_id is null or public.is_pool_member(pool_id))
+    and exists (select 1 from public.app_settings s where s.special_bets_deadline is null or now() < s.special_bets_deadline)
+  );
+
+create policy "special_bets_update_own" on public.special_bets
+  for update to authenticated
+  using (user_id = auth.uid())
+  with check (
+    user_id = auth.uid()
+    and (pool_id is null or public.is_pool_member(pool_id))
+    and exists (select 1 from public.app_settings s where s.special_bets_deadline is null or now() < s.special_bets_deadline)
+  );
+
+-- NOTA: el motor de puntos (points_awarded) y la vista de tabla por grupo llegan en una
+-- migración posterior; correrán como service_role / SECURITY DEFINER, así que omiten RLS.
+-- La tabla de un grupo usa, por cada miembro y partido, el override del grupo si existe,
+-- y si no, el pronóstico por defecto del usuario.
