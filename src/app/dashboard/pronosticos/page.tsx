@@ -37,8 +37,8 @@ export default async function PronosticosPage() {
     phase:        m.phase,
     group_label:  m.group_label,
     kickoff_at:   m.kickoff_at,
-    home_team:    m.home_team as MatchData["home_team"],
-    away_team:    m.away_team as MatchData["away_team"],
+    home_team:    m.home_team as unknown as MatchData["home_team"],
+    away_team:    m.away_team as unknown as MatchData["away_team"],
     prediction:   predByMatch[m.id] ?? null,
     locked:       new Date(m.kickoff_at) <= now,
   }))

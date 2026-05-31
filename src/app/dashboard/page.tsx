@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const pools: Pool[] = (rows ?? [])
     .filter((r) => r.pool !== null)
     .map((r) => {
-      const p = r.pool as { id: string; name: string; invite_code: string }
+      const p = r.pool as unknown as { id: string; name: string; invite_code: string }
       return { id: p.id, name: p.name, invite_code: p.invite_code, role: r.role as "owner" | "member" }
     })
 

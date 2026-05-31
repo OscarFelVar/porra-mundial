@@ -21,6 +21,15 @@ const anton = Anton({
 export const metadata: Metadata = {
   title: "Porra Mundial 2026",
   description: "Porra mundialista para jugar con amigos y familia — pronostica, suma puntos y pelea por la cima.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PorraMundial",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({
@@ -33,6 +42,9 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} ${anton.variable} dark h-full antialiased`}
     >
+      <head>
+        <meta name="theme-color" content="#05070b" />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

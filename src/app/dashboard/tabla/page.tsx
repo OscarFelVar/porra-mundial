@@ -34,7 +34,7 @@ export default async function TablaPage({
 
   const pools = (memberRows ?? [])
     .filter((r) => r.pool !== null)
-    .map((r) => r.pool as { id: string; name: string })
+    .map((r) => r.pool as unknown as { id: string; name: string })
 
   if (pools.length === 0) {
     return (
