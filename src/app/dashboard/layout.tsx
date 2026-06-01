@@ -1,10 +1,10 @@
 import Link from "next/link"
+import Image from "next/image"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { Avatar } from "@/components/avatar"
 import { StadiumBackground } from "@/components/stadium-background"
-import { WorldCupTrophy } from "@/components/icons"
 
 export default async function DashboardLayout({
   children,
@@ -30,7 +30,13 @@ export default async function DashboardLayout({
       <main className="relative z-0 flex min-h-[100svh] flex-col items-center px-6 py-10 text-white">
         <header className="mb-8 flex w-full max-w-2xl items-center justify-between gap-3">
           <Link href="/dashboard" className="flex items-center gap-2" title="Inicio">
-            <WorldCupTrophy className="h-6 w-6 shrink-0 text-amber-300 drop-shadow-[0_4px_14px_rgba(250,204,21,0.35)]" />
+            <Image
+              src="/icons/trofeo.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 shrink-0 drop-shadow-[0_4px_14px_rgba(250,204,21,0.35)]"
+            />
             <span className="font-[family-name:var(--font-display)] text-2xl uppercase tracking-tight">
               Porra
               <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
