@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { SpecialBetsForm, type Team } from "@/components/special-bets-form"
+import { Reveal } from "@/components/reveal"
 
 export default async function ApuestasPage() {
   const supabase = await createClient()
@@ -29,12 +30,16 @@ export default async function ApuestasPage() {
 
   return (
     <section className="w-full max-w-2xl">
-      <h2 className="mb-2 font-[family-name:var(--font-display)] text-xl uppercase tracking-tight text-white">
-        Apuestas especiales
-      </h2>
-      <p className="mb-5 text-sm text-white/40">
-        Predice el campeón, subcampeón y máximo goleador del Mundial. Solo puedes cambiarlo antes del primer partido.
-      </p>
+      <Reveal>
+        <h2 className="mb-2 font-[family-name:var(--font-display)] text-3xl uppercase tracking-tight">
+          <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+            Apuestas especiales
+          </span>
+        </h2>
+        <p className="mb-5 text-sm text-white/40">
+          Predice el campeón, subcampeón y máximo goleador del Mundial. Solo puedes cambiarlo antes del primer partido.
+        </p>
+      </Reveal>
       <SpecialBetsForm
         teams={teams}
         existing={betData ?? null}

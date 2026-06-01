@@ -155,9 +155,11 @@ export function PoolsSection({ pools, isAdmin }: { pools: Pool[]; isAdmin: boole
       {/* Header */}
       <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2 text-white/70">
-          <Users size={16} />
-          <span className="font-[family-name:var(--font-display)] text-xl uppercase tracking-tight text-white">
-            Mis grupos
+          <Users size={18} className="text-emerald-300" />
+          <span className="font-[family-name:var(--font-display)] text-2xl uppercase tracking-tight">
+            <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+              Mis grupos
+            </span>
           </span>
         </div>
         <div className="flex gap-2">
@@ -200,7 +202,7 @@ export function PoolsSection({ pools, isAdmin }: { pools: Pool[]; isAdmin: boole
                     <button
                       onClick={handleJoin}
                       disabled={isJoining || !codeValue.trim()}
-                      className="cursor-pointer rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+                      className="cursor-pointer rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:opacity-90 disabled:opacity-40"
                     >
                       {isJoining ? "Uniéndose…" : "Unirse"}
                     </button>
@@ -219,7 +221,7 @@ export function PoolsSection({ pools, isAdmin }: { pools: Pool[]; isAdmin: boole
               if (!open) { setNameValue(""); setCreateError(null) }
             }}
           >
-            <Dialog.Trigger className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black transition hover:bg-white/90">
+            <Dialog.Trigger className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-3 py-2 text-sm font-semibold text-emerald-950 transition hover:opacity-90">
               <Plus size={14} />
               Crear grupo
             </Dialog.Trigger>
@@ -250,7 +252,7 @@ export function PoolsSection({ pools, isAdmin }: { pools: Pool[]; isAdmin: boole
                     <button
                       onClick={handleCreate}
                       disabled={isCreating || !nameValue.trim()}
-                      className="cursor-pointer rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+                      className="cursor-pointer rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:opacity-90 disabled:opacity-40"
                     >
                       {isCreating ? "Creando…" : "Crear"}
                     </button>
@@ -265,7 +267,7 @@ export function PoolsSection({ pools, isAdmin }: { pools: Pool[]; isAdmin: boole
 
       {/* Pool list */}
       {pools.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center text-white/40">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.03] py-16 text-center text-white/40 backdrop-blur">
           <span className="text-4xl">🏆</span>
           <p className="mt-3 text-sm">Aún no tienes grupos</p>
           <p className="mt-1 text-xs">

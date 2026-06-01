@@ -59,7 +59,7 @@ function TeamSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-40 [&>option]:bg-[#0d1117]"
+        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-40 [&>option]:bg-[#0d1117]"
       >
         <option value="">— Elige un equipo —</option>
         {filtered.map((t) => (
@@ -161,7 +161,7 @@ export function SpecialBetsForm({
             disabled={closed}
             placeholder="Nombre del jugador"
             maxLength={60}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-white/30 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-40"
           />
         </div>
       </div>
@@ -178,7 +178,7 @@ export function SpecialBetsForm({
             <button
               onClick={handleSave}
               disabled={isPending}
-              className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-white/90 disabled:opacity-40"
+              className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-sm font-semibold text-emerald-950 transition hover:opacity-90 disabled:opacity-40"
             >
               {isPending && <Loader2 size={13} className="animate-spin" />}
               {isPending ? "Guardando…" : existing ? "Actualizar" : "Guardar"}

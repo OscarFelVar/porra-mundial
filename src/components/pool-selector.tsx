@@ -20,9 +20,9 @@ export function PoolSelector({ pools, selected }: { pools: Pool[]; selected: str
         <button
           key={p.id}
           onClick={() => onChange(p.id)}
-          className={`cursor-pointer rounded-xl border px-3 py-1.5 text-sm transition ${
+          className={`cursor-pointer rounded-full border px-3.5 py-1.5 text-sm transition ${
             p.id === selected
-              ? "border-white bg-white font-semibold text-black"
+              ? "border-transparent bg-gradient-to-r from-emerald-400 to-cyan-400 font-semibold text-emerald-950"
               : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10"
           }`}
         >

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { createClient } from "@/lib/supabase/client";
+import { StadiumBackground } from "@/components/stadium-background";
 
 type Status = "idle" | "loading" | "sent" | "error";
 
@@ -30,11 +31,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-[100svh] flex-col items-center justify-center overflow-hidden bg-[#05070b] px-6 py-16 text-white">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/3 h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-[130px]"
-      />
+    <main className="relative flex min-h-[100svh] flex-col items-center justify-center px-6 py-16 text-white">
+      <StadiumBackground />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -47,8 +45,10 @@ export default function LoginPage() {
         >
           ← Volver
         </Link>
-        <h1 className="text-center font-[family-name:var(--font-display)] text-4xl uppercase tracking-tight">
-          Entrar
+        <h1 className="text-center font-[family-name:var(--font-display)] text-5xl uppercase tracking-tight">
+          <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+            Entrar
+          </span>
         </h1>
         <p className="mt-2 text-center text-sm text-white/55">
           Te enviamos un enlace mágico a tu correo, sin contraseñas.

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { ProfileForm } from "@/components/profile-form"
+import { Reveal } from "@/components/reveal"
 
 export default async function PerfilPage() {
   const supabase = await createClient()
@@ -15,9 +16,13 @@ export default async function PerfilPage() {
 
   return (
     <section className="w-full max-w-2xl">
-      <h2 className="mb-5 font-[family-name:var(--font-display)] text-xl uppercase tracking-tight text-white">
-        Mi perfil
-      </h2>
+      <Reveal>
+        <h2 className="mb-5 font-[family-name:var(--font-display)] text-3xl uppercase tracking-tight">
+          <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+            Mi perfil
+          </span>
+        </h2>
+      </Reveal>
       <ProfileForm
         userId={user!.id}
         email={user!.email ?? ""}
