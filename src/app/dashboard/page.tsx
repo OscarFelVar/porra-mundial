@@ -7,6 +7,12 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user!.id)
+    .single()
+
   const { data: rows } = await supabase
     .from("pool_members")
     .select(`
@@ -27,5 +33,5 @@ export default async function DashboardPage() {
       return { id: p.id, name: p.name, invite_code: p.invite_code, role: r.role as "owner" | "member" }
     })
 
-  return <PoolsSection pools={pools} />
+  return <PoolsSection pools={pools} isAdmin={profile?.is_admin ?? false} />
 }

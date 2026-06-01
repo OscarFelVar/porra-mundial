@@ -96,7 +96,7 @@ function ModalInput({
 // Main component
 // ────────────────────────────────────────────────────────────────────────────
 
-export function PoolsSection({ pools }: { pools: Pool[] }) {
+export function PoolsSection({ pools, isAdmin }: { pools: Pool[]; isAdmin: boolean }) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // Create state
@@ -210,7 +210,8 @@ export function PoolsSection({ pools }: { pools: Pool[] }) {
             </Dialog.Portal>
           </Dialog.Root>
 
-          {/* ── Crear grupo ── */}
+          {/* ── Crear grupo (solo admin) ── */}
+          {isAdmin && (
           <Dialog.Root
             open={createOpen}
             onOpenChange={(open) => {
@@ -258,6 +259,7 @@ export function PoolsSection({ pools }: { pools: Pool[] }) {
               </Dialog.Popup>
             </Dialog.Portal>
           </Dialog.Root>
+          )}
         </div>
       </div>
 
@@ -266,7 +268,11 @@ export function PoolsSection({ pools }: { pools: Pool[] }) {
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-16 text-center text-white/40">
           <span className="text-4xl">🏆</span>
           <p className="mt-3 text-sm">Aún no tienes grupos</p>
-          <p className="mt-1 text-xs">Crea uno o únete con un código de invitación</p>
+          <p className="mt-1 text-xs">
+            {isAdmin
+              ? "Crea uno o únete con un código de invitación"
+              : "Únete con un código de invitación"}
+          </p>
         </div>
       ) : (
         <ul className="grid gap-3">

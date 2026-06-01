@@ -1,11 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
 import { PoolSelector } from "@/components/pool-selector"
+import { Avatar } from "@/components/avatar"
 import { Medal } from "lucide-react"
 
 type Row = {
   rank: number
   user_id: string
   display_name: string | null
+  avatar_url: string | null
   total_points: number
   pred_count: number
 }
@@ -57,6 +59,7 @@ export default async function TablaPage({
     rank:         Number(r.rank),
     user_id:      r.user_id as string,
     display_name: r.display_name as string | null,
+    avatar_url:   r.avatar_url as string | null,
     total_points: Number(r.total_points),
     pred_count:   Number(r.pred_count),
   }))
@@ -93,7 +96,8 @@ export default async function TablaPage({
                 )}
               </div>
 
-              {/* Nombre */}
+              {/* Avatar + nombre */}
+              <Avatar src={row.avatar_url} name={row.display_name} size={32} />
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
                 {row.display_name ?? "Anónimo"}
                 {row.user_id === user!.id && (
