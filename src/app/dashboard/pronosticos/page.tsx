@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { MatchCard, type MatchData } from "@/components/match-card"
+import { Reveal } from "@/components/reveal"
 
 export default async function PronosticosPage() {
   const supabase = await createClient()
@@ -51,7 +52,7 @@ export default async function PronosticosPage() {
 
   if (matchData.length === 0) {
     return (
-      <section className="flex w-full max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-20 text-center text-white/40">
+      <section className="flex w-full max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.03] py-20 text-center text-white/40 backdrop-blur">
         <span className="text-4xl">⚽</span>
         <p className="mt-3 text-sm">Aún no hay partidos cargados</p>
         <p className="mt-1 text-xs">Ejecuta la migración SQL en Supabase para añadir datos de prueba</p>
@@ -61,9 +62,13 @@ export default async function PronosticosPage() {
 
   return (
     <section className="w-full max-w-2xl">
-      <h2 className="mb-5 font-[family-name:var(--font-display)] text-xl uppercase tracking-tight text-white">
-        Pronósticos
-      </h2>
+      <Reveal>
+        <h2 className="mb-5 font-[family-name:var(--font-display)] text-3xl uppercase tracking-tight">
+          <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+            Pronósticos
+          </span>
+        </h2>
+      </Reveal>
       <ul className="grid gap-3">
         {matchData.map((m) => (
           <MatchCard key={m.id} match={m} />
