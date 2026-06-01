@@ -14,6 +14,23 @@ export type MatchData = {
   away_team: { id: string; name: string; code: string | null; crest_url: string | null } | null
   prediction: { home_score: number; away_score: number } | null
   locked: boolean
+  finished: boolean
+  result: { home: number; away: number } | null
+  points: number | null
+}
+
+function PointsBadge({ points }: { points: number | null }) {
+  if (points == null) return null
+  const positive = points > 0
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+        positive ? "bg-emerald-400/15 text-emerald-300" : "bg-white/5 text-white/40"
+      }`}
+    >
+      {positive ? `+${points}` : "0"} pts
+    </span>
+  )
 }
 
 const PHASE_NAMES: Record<string, string> = {
@@ -148,7 +165,16 @@ export function MatchCard({ match }: { match: MatchData }) {
         </div>
 
         {/* Scores */}
-        {match.locked ? (
+        {match.finished && match.result ? (
+          <div className="flex flex-col items-center">
+            <div className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl text-white">
+              <span className="min-w-[2rem] text-center">{match.result.home}</span>
+              <span className="text-white/25">:</span>
+              <span className="min-w-[2rem] text-center">{match.result.away}</span>
+            </div>
+            <span className="text-[10px] uppercase tracking-wider text-white/30">Final</span>
+          </div>
+        ) : match.locked ? (
           <div className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl text-white">
             <span className="min-w-[2rem] text-center">
               {match.prediction?.home_score ?? "–"}
@@ -179,7 +205,18 @@ export function MatchCard({ match }: { match: MatchData }) {
       <div className="mt-3 flex items-center justify-end gap-2">
         {error && <p className="text-xs text-red-400">{error}</p>}
 
-        {match.locked ? (
+        {match.finished ? (
+          <>
+            {match.prediction ? (
+              <span className="text-xs text-white/40">
+                Tu pronóstico {match.prediction.home_score}–{match.prediction.away_score}
+              </span>
+            ) : (
+              <span className="text-xs text-white/30">No pronosticaste</span>
+            )}
+            <PointsBadge points={match.points} />
+          </>
+        ) : match.locked ? (
           <span className="flex items-center gap-1 text-xs text-white/30">
             <Lock size={11} /> Cerrado
           </span>

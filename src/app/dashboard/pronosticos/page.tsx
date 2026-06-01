@@ -21,6 +21,8 @@ export default async function PronosticosPage() {
         group_label,
         kickoff_at,
         status,
+        home_score_90,
+        away_score_90,
         home_team:home_team_id ( id, name, code, crest_url ),
         away_team:away_team_id ( id, name, code, crest_url )
       `)
@@ -29,7 +31,7 @@ export default async function PronosticosPage() {
 
   const { data: predictions } = await supabase
     .from("predictions")
-    .select("match_id, home_score, away_score")
+    .select("match_id, home_score, away_score, points_awarded")
     .eq("user_id", user!.id)
     .is("pool_id", null)
 
@@ -39,16 +41,24 @@ export default async function PronosticosPage() {
 
   const now = new Date()
 
-  const matchData: MatchData[] = (matches ?? []).map((m) => ({
-    id:           m.id,
-    phase:        m.phase,
-    group_label:  m.group_label,
-    kickoff_at:   m.kickoff_at,
-    home_team:    m.home_team as unknown as MatchData["home_team"],
-    away_team:    m.away_team as unknown as MatchData["away_team"],
-    prediction:   predByMatch[m.id] ?? null,
-    locked:       new Date(m.kickoff_at) <= now,
-  }))
+  const matchData: MatchData[] = (matches ?? []).map((m) => {
+    const pred = predByMatch[m.id] ?? null
+    const finished =
+      m.status === "finished" && m.home_score_90 != null && m.away_score_90 != null
+    return {
+      id:           m.id,
+      phase:        m.phase,
+      group_label:  m.group_label,
+      kickoff_at:   m.kickoff_at,
+      home_team:    m.home_team as unknown as MatchData["home_team"],
+      away_team:    m.away_team as unknown as MatchData["away_team"],
+      prediction:   pred ? { home_score: pred.home_score, away_score: pred.away_score } : null,
+      locked:       new Date(m.kickoff_at) <= now,
+      finished,
+      result:       finished ? { home: m.home_score_90 ?? 0, away: m.away_score_90 ?? 0 } : null,
+      points:       pred?.points_awarded ?? null,
+    }
+  })
 
   if (matchData.length === 0) {
     return (
