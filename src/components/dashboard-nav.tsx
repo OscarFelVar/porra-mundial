@@ -3,12 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion } from "motion/react"
-import { Users, Trophy, Star, BarChart2 } from "lucide-react"
+import { Users, Trophy, Star, BarChart2, Swords } from "lucide-react"
 
 const tabs = [
   { href: "/dashboard",             label: "Grupos",       icon: Users     },
   { href: "/dashboard/pronosticos", label: "Pronósticos",  icon: Trophy    },
   { href: "/dashboard/apuestas",    label: "Apuestas",     icon: Star      },
+  { href: "/dashboard/bracket",     label: "Bracket",      icon: Swords    },
   { href: "/dashboard/tabla",       label: "Tabla",        icon: BarChart2 },
 ]
 
@@ -33,12 +34,12 @@ export function DashboardNav() {
               />
             )}
             <span
-              className={`relative z-10 flex items-center gap-2 ${
+              className={`relative z-10 flex items-center gap-1.5 ${
                 active ? "font-semibold text-emerald-950" : "text-white/50 hover:text-white"
               }`}
             >
               <Icon size={14} />
-              {label}
+              <span className="hidden sm:inline">{label}</span>
             </span>
           </Link>
         )
