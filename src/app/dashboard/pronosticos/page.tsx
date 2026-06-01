@@ -3,22 +3,28 @@ import { MatchCard, type MatchData } from "@/components/match-card"
 
 export default async function PronosticosPage() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
 
-  const { data: matches } = await supabase
-    .from("matches")
-    .select(`
-      id,
-      phase,
-      group_label,
-      kickoff_at,
-      status,
-      home_team:home_team_id ( id, name, code, crest_url ),
-      away_team:away_team_id ( id, name, code, crest_url )
-    `)
-    .order("kickoff_at", { ascending: true })
+  // getUser y la consulta de partidos no dependen entre sí: en paralelo.
+  const [
+    {
+      data: { user },
+    },
+    { data: matches },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("matches")
+      .select(`
+        id,
+        phase,
+        group_label,
+        kickoff_at,
+        status,
+        home_team:home_team_id ( id, name, code, crest_url ),
+        away_team:away_team_id ( id, name, code, crest_url )
+      `)
+      .order("kickoff_at", { ascending: true }),
+  ])
 
   const { data: predictions } = await supabase
     .from("predictions")
