@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion, type Variants } from "motion/react";
 import { Countdown } from "@/components/countdown";
 import { SoccerBall, WorldCupTrophy, ChartBars } from "@/components/icons";
+import { AuthorCredit } from "@/components/author-credit";
 
 const container: Variants = {
   hidden: {},
@@ -156,7 +157,9 @@ export default function Home() {
         </motion.ul>
       </motion.div>
 
-      <footer className="absolute inset-x-0 bottom-4 z-10 px-4 text-center text-[0.7rem] text-white/30">
+      <footer className="absolute inset-x-0 bottom-4 z-10 flex flex-col items-center gap-1 px-4 text-center text-[0.7rem] text-white/30">
+        <AuthorCredit />
+        <span>
         Iconos por{" "}
         <a
           href="https://www.flaticon.es/iconos-gratis/copa-mundial"
@@ -176,6 +179,7 @@ export default function Home() {
           Freepik
         </a>{" "}
         · Flaticon
+        </span>
       </footer>
     </main>
   );

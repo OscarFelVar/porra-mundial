@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server"
 import { DashboardNav } from "@/components/dashboard-nav"
 import { Avatar } from "@/components/avatar"
 import { StadiumBackground } from "@/components/stadium-background"
+import { AuthorCredit } from "@/components/author-credit"
 
 export default async function DashboardLayout({
   children,
@@ -73,6 +74,10 @@ export default async function DashboardLayout({
         <DashboardNav />
 
         {children}
+
+        <footer className="mt-12 pb-1">
+          <AuthorCredit />
+        </footer>
       </main>
     </>
   )
