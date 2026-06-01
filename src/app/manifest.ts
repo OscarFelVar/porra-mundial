@@ -15,6 +15,12 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icons/trofeo-192.png",
         sizes: "192x192",
         type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/trofeo-maskable-192.png",
+        sizes: "192x192",
+        type: "image/png",
         purpose: "maskable",
       },
       {
