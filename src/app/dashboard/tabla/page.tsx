@@ -1,22 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { PoolSelector } from "@/components/pool-selector"
-import { Avatar } from "@/components/avatar"
-import { Medal } from "lucide-react"
-
-type Row = {
-  rank: number
-  user_id: string
-  display_name: string | null
-  avatar_url: string | null
-  total_points: number
-  pred_count: number
-}
-
-const medalColors: Record<number, string> = {
-  1: "text-yellow-400",
-  2: "text-zinc-300",
-  3: "text-amber-600",
-}
+import { Reveal } from "@/components/reveal"
+import { LeaderboardList, type LeaderboardRow } from "@/components/leaderboard-list"
 
 export default async function TablaPage({
   searchParams,
@@ -40,7 +25,7 @@ export default async function TablaPage({
 
   if (pools.length === 0) {
     return (
-      <section className="flex w-full max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-20 text-center text-white/40">
+      <section className="flex w-full max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.03] py-20 text-center text-white/40 backdrop-blur">
         <span className="text-4xl">📊</span>
         <p className="mt-3 text-sm">Únete a un grupo para ver la tabla</p>
       </section>
@@ -55,7 +40,7 @@ export default async function TablaPage({
     p_pool_id: selectedId,
   })
 
-  const leaderboard: Row[] = (rows ?? []).map((r: Record<string, unknown>) => ({
+  const leaderboard: LeaderboardRow[] = (rows ?? []).map((r: Record<string, unknown>) => ({
     rank:         Number(r.rank),
     user_id:      r.user_id as string,
     display_name: r.display_name as string | null,
@@ -66,9 +51,13 @@ export default async function TablaPage({
 
   return (
     <section className="w-full max-w-2xl">
-      <h2 className="mb-5 font-[family-name:var(--font-display)] text-xl uppercase tracking-tight text-white">
-        Tabla
-      </h2>
+      <Reveal>
+        <h2 className="mb-5 font-[family-name:var(--font-display)] text-3xl uppercase tracking-tight">
+          <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+            Tabla
+          </span>
+        </h2>
+      </Reveal>
 
       <PoolSelector pools={pools} selected={selectedId} />
 
@@ -77,45 +66,7 @@ export default async function TablaPage({
       ) : leaderboard.length === 0 ? (
         <p className="text-sm text-white/40">No hay miembros en este grupo aún.</p>
       ) : (
-        <ul className="grid gap-2">
-          {leaderboard.map((row) => (
-            <li
-              key={row.user_id}
-              className={`flex items-center gap-4 rounded-2xl border px-5 py-3 ${
-                row.user_id === user!.id
-                  ? "border-white/20 bg-white/10"
-                  : "border-white/10 bg-white/5"
-              }`}
-            >
-              {/* Posición */}
-              <div className="w-7 shrink-0 text-center">
-                {row.rank <= 3 ? (
-                  <Medal size={18} className={medalColors[row.rank]} />
-                ) : (
-                  <span className="text-sm font-bold text-white/30">{row.rank}</span>
-                )}
-              </div>
-
-              {/* Avatar + nombre */}
-              <Avatar src={row.avatar_url} name={row.display_name} size={32} />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
-                {row.display_name ?? "Anónimo"}
-                {row.user_id === user!.id && (
-                  <span className="ml-2 text-xs text-white/40">(tú)</span>
-                )}
-              </span>
-
-              {/* Stats */}
-              <div className="flex items-center gap-4 text-right text-sm">
-                <span className="text-white/40">{row.pred_count} pronós.</span>
-                <span className="min-w-[3rem] font-[family-name:var(--font-display)] text-xl text-white">
-                  {row.total_points}
-                  <span className="ml-0.5 text-xs font-sans text-white/40">pts</span>
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <LeaderboardList rows={leaderboard} currentUserId={user!.id} />
       )}
     </section>
   )
