@@ -105,8 +105,29 @@ async function syncFull() {
     (upsertedTeams ?? []).map((t) => [t.external_id, t.id]),
   )
 
+  // Jugadores (las plantillas vienen dentro de cada equipo: t.squad)
+  const playerRows = fdTeams.flatMap((t) => {
+    const teamId = teamMap[String(t.id)]
+    if (!teamId || !Array.isArray(t.squad)) return []
+    return t.squad.map((p: Record<string, unknown>) => ({
+      external_id: String(p.id),
+      team_id:     teamId,
+      name:        p.name as string,
+      position:    (p.position ?? null) as string | null,
+    }))
+  })
+
+  let playerCount = 0
+  if (playerRows.length) {
+    const { error: playersErr } = await supabase
+      .from("players")
+      .upsert(playerRows, { onConflict: "external_id" })
+    if (playersErr) throw new Error(`upsert players: ${playersErr.message}`)
+    playerCount = playerRows.length
+  }
+
   const matchCount = await syncMatches(teamMap)
-  return { teams: teamRows.length, matches: matchCount }
+  return { teams: teamRows.length, players: playerCount, matches: matchCount }
 }
 
 // ── GET: llamado por Vercel Cron / cron-job.org — solo actualiza partidos ──
