@@ -94,10 +94,13 @@ export default function ComoFuncionaPage() {
 
           <p className="mt-3 font-medium text-white/90">Apuestas especiales:</p>
           <ul className="ml-1 space-y-1">
-            <li>· Campeón: <Pts>15 pts</Pts></li>
-            <li>· Subcampeón: <Pts>8 pts</Pts></li>
             <li>· Máximo goleador: <Pts>10 pts</Pts></li>
+            <li>· MVP del Mundial: <Pts>12 pts</Pts></li>
+            <li>· Valla menos vencida (mejor portero): <Pts>8 pts</Pts></li>
           </ul>
+          <p className="mt-1 text-xs text-white/40">
+            (El campeón ya lo pronosticas en el cuadro de eliminatorias.)
+          </p>
         </Section>
 
         <Section icon={Swords} title="4. El cuadro de eliminatorias">
@@ -120,9 +123,9 @@ export default function ComoFuncionaPage() {
         <Section icon={Star} title="5. Apuestas especiales">
           <p>
             En <strong className="text-white/90">Apuestas</strong> eliges
-            <strong className="text-white/90"> campeón</strong>,
-            <strong className="text-white/90"> subcampeón</strong> y
-            <strong className="text-white/90"> máximo goleador</strong> del torneo.
+            <strong className="text-white/90"> máximo goleador</strong>,
+            <strong className="text-white/90"> MVP del Mundial</strong> y
+            <strong className="text-white/90"> valla menos vencida</strong> (mejor portero).
             Se cierran <strong className="text-white/90">antes del primer partido del Mundial</strong>.
           </p>
         </Section>

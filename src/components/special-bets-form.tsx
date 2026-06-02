@@ -4,111 +4,75 @@ import { useState, useTransition } from "react"
 import { Check, Loader2, Lock } from "lucide-react"
 import { upsertSpecialBets } from "@/app/dashboard/apuestas/actions"
 
-export type Team = {
-  id: string
-  name: string
-  code: string | null
-  crest_url: string | null
-}
-
 type Bet = {
-  champion_team_id: string | null
-  runnerup_team_id: string | null
   top_scorer: string | null
+  mvp: string | null
+  best_goalkeeper: string | null
 }
 
-function TeamPreview({ team }: { team: Team | undefined }) {
-  if (!team) return <div className="h-14" />
-  return (
-    <div className="flex items-center gap-2 pt-1">
-      {team.crest_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={team.crest_url} alt={team.name} width={28} height={28} className="h-7 w-7 object-contain" />
-      ) : (
-        <div className="h-7 w-7 rounded-full bg-white/10" />
-      )}
-      <span className="text-sm text-white/70">{team.name}</span>
-    </div>
-  )
-}
-
-function TeamSelect({
+function Field({
+  emoji,
   label,
+  hint,
   value,
   onChange,
-  teams,
-  exclude,
   disabled,
 }: {
+  emoji: string
   label: string
+  hint: string
   value: string
   onChange: (v: string) => void
-  teams: Team[]
-  exclude?: string
   disabled: boolean
 }) {
-  const filtered = teams.filter((t) => t.id !== exclude)
-  const selected = teams.find((t) => t.id === value)
-
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-semibold uppercase tracking-wider text-white/50">
-        {label}
+        {emoji} {label}
       </label>
-      <select
+      <input
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white outline-none transition focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-40 [&>option]:bg-[#0d1117]"
-      >
-        <option value="">— Elige un equipo —</option>
-        {filtered.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.code ? `${t.code} · ` : ""}{t.name}
-          </option>
-        ))}
-      </select>
-      <TeamPreview team={selected} />
+        placeholder={hint}
+        maxLength={60}
+        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-40"
+      />
     </div>
   )
 }
 
 export function SpecialBetsForm({
-  teams,
   existing,
   deadline,
   closed,
 }: {
-  teams: Team[]
   existing: Bet | null
   deadline: string | null
   closed: boolean
 }) {
-  const [champion, setChampion] = useState(existing?.champion_team_id ?? "")
-  const [runnerup, setRunnerup] = useState(existing?.runnerup_team_id ?? "")
   const [scorer, setScorer] = useState(existing?.top_scorer ?? "")
+  const [mvp, setMvp] = useState(existing?.mvp ?? "")
+  const [gk, setGk] = useState(existing?.best_goalkeeper ?? "")
   const [saved, setSaved] = useState(!!existing)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const dirty =
-    champion !== (existing?.champion_team_id ?? "") ||
-    runnerup !== (existing?.runnerup_team_id ?? "") ||
-    scorer   !== (existing?.top_scorer ?? "")
+    scorer !== (existing?.top_scorer ?? "") ||
+    mvp !== (existing?.mvp ?? "") ||
+    gk !== (existing?.best_goalkeeper ?? "")
 
   function handleSave() {
-    if (!champion || !runnerup || !scorer.trim()) {
-      setError("Completa los tres campos")
-      return
-    }
-    if (champion === runnerup) {
-      setError("El campeón y el subcampeón no pueden ser el mismo equipo")
+    if (!scorer.trim() && !mvp.trim() && !gk.trim()) {
+      setError("Completa al menos un premio")
       return
     }
     setError(null)
     startTransition(async () => {
       try {
-        await upsertSpecialBets(champion, runnerup, scorer)
+        await upsertSpecialBets(scorer, mvp, gk)
         setSaved(true)
       } catch (e) {
         setError((e as Error).message)
@@ -118,7 +82,6 @@ export function SpecialBetsForm({
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-      {/* Deadline */}
       <div className="mb-5 flex items-center justify-between">
         <p className="text-sm text-white/40">
           {deadline
@@ -133,44 +96,36 @@ export function SpecialBetsForm({
       </div>
 
       <div className="grid gap-5">
-        <TeamSelect
-          label="🥇 Campeón del Mundial"
-          value={champion}
-          onChange={(v) => { setChampion(v); setSaved(false) }}
-          teams={teams}
-          exclude={runnerup}
+        <Field
+          emoji="⚽"
+          label="Máximo goleador"
+          hint="Nombre del jugador"
+          value={scorer}
+          onChange={(v) => { setScorer(v); setSaved(false) }}
           disabled={closed}
         />
-        <TeamSelect
-          label="🥈 Subcampeón"
-          value={runnerup}
-          onChange={(v) => { setRunnerup(v); setSaved(false) }}
-          teams={teams}
-          exclude={champion}
+        <Field
+          emoji="🏅"
+          label="MVP del Mundial"
+          hint="Mejor jugador del torneo"
+          value={mvp}
+          onChange={(v) => { setMvp(v); setSaved(false) }}
           disabled={closed}
         />
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold uppercase tracking-wider text-white/50">
-            ⚽ Máximo goleador
-          </label>
-          <input
-            type="text"
-            value={scorer}
-            onChange={(e) => { setScorer(e.target.value); setSaved(false) }}
-            disabled={closed}
-            placeholder="Nombre del jugador"
-            maxLength={60}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-40"
-          />
-        </div>
+        <Field
+          emoji="🧤"
+          label="Valla menos vencida"
+          hint="Portero menos goleado"
+          value={gk}
+          onChange={(v) => { setGk(v); setSaved(false) }}
+          disabled={closed}
+        />
       </div>
 
-      {/* Footer */}
       <div className="mt-5 flex items-center justify-end gap-3">
         {error && <p className="text-xs text-red-400">{error}</p>}
-        {!closed && (
-          saved && !dirty ? (
+        {!closed &&
+          (saved && !dirty ? (
             <span className="flex items-center gap-1 text-sm text-emerald-400">
               <Check size={14} /> Guardado
             </span>
@@ -183,8 +138,7 @@ export function SpecialBetsForm({
               {isPending && <Loader2 size={13} className="animate-spin" />}
               {isPending ? "Guardando…" : existing ? "Actualizar" : "Guardar"}
             </button>
-          )
-        )}
+          ))}
       </div>
     </div>
   )

@@ -1,19 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
-import { SpecialBetsForm, type Team } from "@/components/special-bets-form"
+import { SpecialBetsForm } from "@/components/special-bets-form"
 import { Reveal } from "@/components/reveal"
 
 export default async function ApuestasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: teamsData }, { data: betData }, { data: settings }] = await Promise.all([
-    supabase
-      .from("teams")
-      .select("id, name, code, crest_url")
-      .order("name", { ascending: true }),
+  const [{ data: betData }, { data: settings }] = await Promise.all([
     supabase
       .from("special_bets")
-      .select("champion_team_id, runnerup_team_id, top_scorer")
+      .select("top_scorer, mvp, best_goalkeeper")
       .eq("user_id", user!.id)
       .is("pool_id", null)
       .maybeSingle(),
@@ -24,7 +20,6 @@ export default async function ApuestasPage() {
       .single(),
   ])
 
-  const teams: Team[] = (teamsData ?? []) as Team[]
   const deadline = settings?.special_bets_deadline ?? null
   const closed = deadline ? new Date() >= new Date(deadline) : false
 
@@ -37,11 +32,10 @@ export default async function ApuestasPage() {
           </span>
         </h2>
         <p className="mb-5 text-sm text-white/40">
-          Predice el campeón, subcampeón y máximo goleador del Mundial. Solo puedes cambiarlo antes del primer partido.
+          Predice el máximo goleador, el MVP y la valla menos vencida del Mundial. Solo puedes cambiarlo antes del primer partido.
         </p>
       </Reveal>
       <SpecialBetsForm
-        teams={teams}
         existing={betData ?? null}
         deadline={deadline}
         closed={closed}
