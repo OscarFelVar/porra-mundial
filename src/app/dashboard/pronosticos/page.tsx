@@ -39,7 +39,8 @@ export default async function PronosticosPage() {
     (predictions ?? []).map((p) => [p.match_id, p]),
   )
 
-  const now = new Date()
+  const nowMs = new Date().getTime()
+  const LOCK_MS = 15 * 60 * 1000 // se cierra 15 min antes del kickoff
 
   const matchData: MatchData[] = (matches ?? []).map((m) => {
     const pred = predByMatch[m.id] ?? null
@@ -53,7 +54,7 @@ export default async function PronosticosPage() {
       home_team:    m.home_team as unknown as MatchData["home_team"],
       away_team:    m.away_team as unknown as MatchData["away_team"],
       prediction:   pred ? { home_score: pred.home_score, away_score: pred.away_score } : null,
-      locked:       new Date(m.kickoff_at) <= now,
+      locked:       new Date(m.kickoff_at).getTime() - LOCK_MS <= nowMs,
       finished,
       result:       finished ? { home: m.home_score_90 ?? 0, away: m.away_score_90 ?? 0 } : null,
       points:       pred?.points_awarded ?? null,

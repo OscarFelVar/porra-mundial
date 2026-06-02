@@ -52,7 +52,7 @@ export default async function BracketPage({
   const firstKickoff = r32Real.length
     ? Math.min(...r32Real.map((m) => new Date(m.kickoff_at).getTime()))
     : null
-  const open = firstKickoff != null && new Date().getTime() < firstKickoff
+  const open = firstKickoff != null && new Date().getTime() < firstKickoff - 15 * 60 * 1000
 
   const { data: picks } = await supabase
     .from("bracket_predictions")
