@@ -68,9 +68,9 @@ export default function ComoFuncionaPage() {
             quedará en cada uno.
           </p>
           <p>
-            Cada partido se <strong className="text-white/90">cierra a su hora de inicio</strong>:
-            a partir de ahí ya no puedes cambiar ese pronóstico. Cuando termina, verás el resultado
-            real, tu pronóstico y los puntos que ganaste.
+            Cada partido se <strong className="text-white/90">cierra 15 minutos antes de su
+            hora de inicio</strong>: a partir de ahí ya no puedes cambiar ese pronóstico. Cuando
+            termina, verás el resultado real, tu pronóstico y los puntos que ganaste.
           </p>
         </Section>
 
@@ -115,8 +115,8 @@ export default function ComoFuncionaPage() {
             marcadores</strong>, solo quién pasa.
           </p>
           <p>
-            El cuadro se <strong className="text-white/90">cierra al empezar el primer partido de
-            dieciseisavos</strong>, así que rellénalo antes.
+            El cuadro se <strong className="text-white/90">cierra 15 minutos antes del primer
+            partido de dieciseisavos</strong>, así que rellénalo antes.
           </p>
         </Section>
 
@@ -141,9 +141,9 @@ export default function ComoFuncionaPage() {
         <Section icon={CalendarClock} title="Fechas clave">
           <ul className="ml-1 space-y-1">
             <li>· <strong className="text-white/90">11 de junio de 2026</strong>: arranca el Mundial y la fase de grupos.</li>
-            <li>· Cierre de cada partido: a su <strong className="text-white/90">hora de inicio</strong>.</li>
+            <li>· Cierre de cada partido: <strong className="text-white/90">15 min antes</strong> de su hora de inicio.</li>
             <li>· Cierre de apuestas especiales: <strong className="text-white/90">antes del primer partido</strong>.</li>
-            <li>· Cuadro de eliminatorias: se abre <strong className="text-white/90">al acabar los grupos</strong> y se cierra al empezar los dieciseisavos.</li>
+            <li>· Cuadro de eliminatorias: se abre <strong className="text-white/90">al acabar los grupos</strong> y se cierra 15 min antes del primer dieciseisavos.</li>
           </ul>
         </Section>
       </div>
