@@ -6,6 +6,7 @@ import { DashboardNav } from "@/components/dashboard-nav"
 import { Avatar } from "@/components/avatar"
 import { StadiumBackground } from "@/components/stadium-background"
 import { AuthorCredit } from "@/components/author-credit"
+import { HelpCircle } from "lucide-react"
 
 export default async function DashboardLayout({
   children,
@@ -46,6 +47,13 @@ export default async function DashboardLayout({
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/como-funciona"
+              className="flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/60 backdrop-blur transition hover:bg-white/10 hover:text-white"
+              title="Cómo funciona"
+            >
+              <HelpCircle size={16} />
+            </Link>
             <Link
               href="/dashboard/perfil"
               className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1.5 backdrop-blur transition hover:bg-white/10"
