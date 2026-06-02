@@ -152,8 +152,8 @@ export function SpecialBetsForm({
         />
         <PlayerAutocomplete
           emoji="🧤"
-          label="Valla menos vencida"
-          hint="Portero menos goleado"
+          label="Mejor portero"
+          hint="El mejor portero del torneo"
           value={gk}
           onChange={(v) => { setGk(v); setSaved(false) }}
           options={goalkeepers}

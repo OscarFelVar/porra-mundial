@@ -96,7 +96,7 @@ export default function ComoFuncionaPage() {
           <ul className="ml-1 space-y-1">
             <li>· Máximo goleador: <Pts>10 pts</Pts></li>
             <li>· MVP del Mundial: <Pts>12 pts</Pts></li>
-            <li>· Valla menos vencida (mejor portero): <Pts>8 pts</Pts></li>
+            <li>· Mejor portero: <Pts>8 pts</Pts></li>
           </ul>
           <p className="mt-1 text-xs text-white/40">
             (El campeón ya lo pronosticas en el cuadro de eliminatorias.)
@@ -125,7 +125,7 @@ export default function ComoFuncionaPage() {
             En <strong className="text-white/90">Apuestas</strong> eliges
             <strong className="text-white/90"> máximo goleador</strong>,
             <strong className="text-white/90"> MVP del Mundial</strong> y
-            <strong className="text-white/90"> valla menos vencida</strong> (mejor portero).
+            <strong className="text-white/90"> mejor portero</strong>.
             Se cierran <strong className="text-white/90">antes del primer partido del Mundial</strong>.
           </p>
         </Section>

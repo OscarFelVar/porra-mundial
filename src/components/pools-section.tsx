@@ -27,10 +27,10 @@ function PoolCard({
   onCopy: () => void
 }) {
   return (
-    <li className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur transition hover:bg-white/[0.07]">
+    <li className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 backdrop-blur transition hover:bg-white/[0.07] sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="truncate font-[family-name:var(--font-display)] text-lg uppercase tracking-tight text-white">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="min-w-0 max-w-full truncate font-[family-name:var(--font-display)] text-lg uppercase tracking-tight text-white">
             {pool.name}
           </h3>
           {pool.isOwner && (
@@ -55,7 +55,7 @@ function PoolCard({
 
       <button
         onClick={onCopy}
-        className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white/80 transition hover:bg-white/10 active:scale-95"
+        className="flex shrink-0 items-center gap-2 self-start rounded-xl border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white/80 transition hover:bg-white/10 active:scale-95 sm:self-auto"
         title="Copiar código"
       >
         <span className="tracking-widest">{pool.invite_code}</span>

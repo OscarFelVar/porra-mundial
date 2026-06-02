@@ -42,7 +42,7 @@ export default async function ApuestasPage() {
           </span>
         </h2>
         <p className="mb-5 text-sm text-white/40">
-          Predice el máximo goleador, el MVP y la valla menos vencida del Mundial. Solo puedes cambiarlo antes del primer partido.
+          Predice el máximo goleador, el MVP y el mejor portero del Mundial. Solo puedes cambiarlo antes del primer partido.
         </p>
       </Reveal>
       <SpecialBetsForm
