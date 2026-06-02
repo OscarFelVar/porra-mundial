@@ -7,31 +7,33 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_admin")
-    .eq("id", user!.id)
-    .single()
+  const [{ data: profile }, { data: memberRows }, { data: ownedRows }] = await Promise.all([
+    supabase.from("profiles").select("is_admin").eq("id", user!.id).single(),
+    // Grupos en los que participo
+    supabase
+      .from("pool_members")
+      .select(`pool:pools ( id, name, invite_code )`)
+      .eq("user_id", user!.id)
+      .order("joined_at", { ascending: false }),
+    // Grupos que administro (soy dueño) — aunque no participe
+    supabase
+      .from("pools")
+      .select("id, name, invite_code")
+      .eq("owner_id", user!.id)
+      .order("created_at", { ascending: false }),
+  ])
 
-  const { data: rows } = await supabase
-    .from("pool_members")
-    .select(`
-      role,
-      pool:pools (
-        id,
-        name,
-        invite_code
-      )
-    `)
-    .eq("user_id", user!.id)
-    .order("joined_at", { ascending: false })
+  // Fusionar por id, marcando si participo y/o administro.
+  const map = new Map<string, Pool>()
+  for (const r of memberRows ?? []) {
+    const p = r.pool as unknown as { id: string; name: string; invite_code: string } | null
+    if (p) map.set(p.id, { id: p.id, name: p.name, invite_code: p.invite_code, isOwner: false, isMember: true })
+  }
+  for (const p of ownedRows ?? []) {
+    const existing = map.get(p.id)
+    if (existing) existing.isOwner = true
+    else map.set(p.id, { id: p.id, name: p.name, invite_code: p.invite_code, isOwner: true, isMember: false })
+  }
 
-  const pools: Pool[] = (rows ?? [])
-    .filter((r) => r.pool !== null)
-    .map((r) => {
-      const p = r.pool as unknown as { id: string; name: string; invite_code: string }
-      return { id: p.id, name: p.name, invite_code: p.invite_code, role: r.role as "owner" | "member" }
-    })
-
-  return <PoolsSection pools={pools} isAdmin={profile?.is_admin ?? false} />
+  return <PoolsSection pools={[...map.values()]} isAdmin={profile?.is_admin ?? false} />
 }

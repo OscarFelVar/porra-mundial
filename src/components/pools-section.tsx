@@ -2,14 +2,15 @@
 
 import { useState, useTransition } from "react"
 import { Dialog } from "@base-ui/react/dialog"
-import { Copy, Check, Plus, Hash, Shield, Users } from "lucide-react"
+import { Copy, Check, Plus, Hash, Settings, Trophy, Users } from "lucide-react"
 import { createPool, joinPool } from "@/app/dashboard/actions"
 
 export type Pool = {
   id: string
   name: string
   invite_code: string
-  role: "owner" | "member"
+  isOwner: boolean
+  isMember: boolean
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -32,14 +33,24 @@ function PoolCard({
           <h3 className="truncate font-[family-name:var(--font-display)] text-lg uppercase tracking-tight text-white">
             {pool.name}
           </h3>
-          {pool.role === "owner" && (
-            <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-yellow-400">
-              <Shield size={9} />
-              dueño
+          {pool.isOwner && (
+            <span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-sky-300">
+              <Settings size={9} />
+              administras
+            </span>
+          )}
+          {pool.isMember && (
+            <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+              <Trophy size={9} />
+              participas
             </span>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-white/40">Código de invitación</p>
+        <p className="mt-0.5 text-xs text-white/40">
+          {pool.isOwner && !pool.isMember
+            ? "Comparte el código · no apareces en la tabla"
+            : "Código de invitación"}
+        </p>
       </div>
 
       <button
