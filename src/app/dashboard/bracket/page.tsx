@@ -68,7 +68,7 @@ export default async function BracketPage({
       away: m.away_team as unknown as Team,
     }))
     return (
-      <section className="w-full max-w-5xl">
+      <section className="w-full max-w-7xl">
         <Heading />
         <FillableBracket matches={matches} initialPicks={picks ?? []} />
       </section>
@@ -78,7 +78,7 @@ export default async function BracketPage({
   // DEMO (sin datos reales aún) → rellenable de prueba, sin guardar.
   if (isDemo && firstKickoff == null) {
     return (
-      <section className="w-full max-w-5xl">
+      <section className="w-full max-w-7xl">
         <Heading />
         <FillableBracket matches={mockR32()} initialPicks={[]} demo />
       </section>
@@ -99,7 +99,7 @@ export default async function BracketPage({
   }))
 
   return (
-    <section className="w-full max-w-5xl">
+    <section className="w-full max-w-7xl">
       <Heading />
       <Bracket matches={knockout} />
     </section>

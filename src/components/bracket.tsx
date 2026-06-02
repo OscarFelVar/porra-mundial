@@ -107,7 +107,7 @@ function RoundColumn({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
-      className="flex w-[15rem] shrink-0 flex-col"
+      className="flex w-[12rem] shrink-0 flex-col"
     >
       <h3 className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
         {label}
@@ -145,13 +145,13 @@ export function Bracket({ matches }: { matches: BracketMatch[] }) {
 
   return (
     <div className="-mx-6 overflow-x-auto px-6 pb-4">
-      <div className="flex min-w-max items-stretch gap-5">
+      <div className="flex min-w-max items-stretch gap-3">
         {activeRounds.map((r, i) => (
           <RoundColumn key={r.key} label={r.label} matches={byPhase(r.key)} index={i} />
         ))}
 
         {thirdPlace.length > 0 && (
-          <div className="flex w-[15rem] shrink-0 flex-col justify-end">
+          <div className="flex w-[12rem] shrink-0 flex-col justify-end">
             <h3 className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-amber-300/50">
               3.er puesto
             </h3>

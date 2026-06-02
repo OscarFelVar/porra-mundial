@@ -148,9 +148,9 @@ export function FillableBracket({
 
       {/* Cuadro */}
       <div className="-mx-6 overflow-x-auto px-6 pb-4">
-        <div className="flex min-w-max items-stretch gap-4">
+        <div className="flex min-w-max items-stretch gap-3">
           {ROUNDS.map((round, ri) => (
-            <div key={round.key} className="flex w-[14rem] shrink-0 flex-col">
+            <div key={round.key} className="flex w-[12rem] shrink-0 flex-col">
               <h3 className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/40">
                 {round.label}
               </h3>
@@ -172,7 +172,7 @@ export function FillableBracket({
           ))}
 
           {/* 3.er puesto */}
-          <div className="flex w-[14rem] shrink-0 flex-col justify-end">
+          <div className="flex w-[12rem] shrink-0 flex-col justify-end">
             <h3 className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-amber-300/50">
               3.er puesto
             </h3>
