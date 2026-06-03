@@ -73,6 +73,17 @@ export async function saveMatchResult(
   revalidatePath("/dashboard/tabla")
 }
 
+// --- Emails de pronósticos: qué grupo los recibe (null = ninguno) ---
+export async function saveDigestPool(poolId: string | null) {
+  const supabase = await assertAdmin()
+  const { error } = await supabase
+    .from("app_settings")
+    .update({ digest_pool_id: poolId })
+    .eq("id", 1)
+  if (error) throw new Error(error.message)
+  revalidatePath("/dashboard/admin")
+}
+
 // --- Knockouts: quién avanza (dispara recálculo del cuadro) ---
 export async function saveAdvancing(matchId: string, teamId: string | null) {
   const supabase = await assertAdmin()

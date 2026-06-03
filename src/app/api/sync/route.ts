@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { dispatchDigests } from "@/lib/email/digests"
 
 const BASE = "https://api.football-data.org/v4"
 
@@ -155,7 +156,17 @@ export async function GET(request: Request) {
     )
 
     const matches = await syncMatches(teamMap)
-    return Response.json({ ok: true, matches })
+
+    // Tras sincronizar, envía las "fotos" de pronósticos que acaban de cerrar.
+    // Blindado: un fallo de email NUNCA debe romper el sync.
+    let emails: unknown
+    try {
+      emails = await dispatchDigests()
+    } catch (e) {
+      emails = { error: (e as Error).message }
+    }
+
+    return Response.json({ ok: true, matches, emails })
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 })
   }
