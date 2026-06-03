@@ -6,7 +6,7 @@ import { DashboardNav } from "@/components/dashboard-nav"
 import { Avatar } from "@/components/avatar"
 import { StadiumBackground } from "@/components/stadium-background"
 import { AuthorCredit } from "@/components/author-credit"
-import { HelpCircle } from "lucide-react"
+import { HelpCircle, Settings } from "lucide-react"
 
 export default async function DashboardLayout({
   children,
@@ -22,7 +22,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, avatar_url")
+    .select("display_name, avatar_url, is_admin")
     .eq("id", user.id)
     .single()
 
@@ -47,6 +47,15 @@ export default async function DashboardLayout({
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            {profile?.is_admin && (
+              <Link
+                href="/dashboard/admin"
+                className="flex items-center justify-center rounded-full border border-amber-300/20 bg-amber-300/10 p-2 text-amber-200/80 backdrop-blur transition hover:bg-amber-300/20 hover:text-amber-100"
+                title="Panel de admin"
+              >
+                <Settings size={16} />
+              </Link>
+            )}
             <Link
               href="/dashboard/como-funciona"
               className="flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-2 text-white/60 backdrop-blur transition hover:bg-white/10 hover:text-white"
