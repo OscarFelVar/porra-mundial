@@ -48,3 +48,6 @@ HANDOFF.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Instructivos privados (llevan nombres y datos de pago; repo público)
+instructivos/

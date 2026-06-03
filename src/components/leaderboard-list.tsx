@@ -26,11 +26,18 @@ export function LeaderboardList({
   rows: LeaderboardRow[]
   currentUserId: string
 }) {
+  // Cuántas filas comparten cada posición → para marcar empates.
+  const rankCounts = rows.reduce<Record<number, number>>((acc, r) => {
+    acc[r.rank] = (acc[r.rank] ?? 0) + 1
+    return acc
+  }, {})
+
   return (
     <ul className="grid gap-2">
       {rows.map((row, i) => {
         const isMe = row.user_id === currentUserId
         const isLeader = row.rank === 1
+        const isTied = rankCounts[row.rank] > 1
 
         return (
           <motion.li
@@ -66,9 +73,14 @@ export function LeaderboardList({
 
             {/* Avatar + nombre */}
             <Avatar src={row.avatar_url} name={row.display_name} size={32} />
-            <span className="relative z-10 min-w-0 flex-1 truncate text-sm font-medium text-white">
-              {row.display_name ?? "Anónimo"}
-              {isMe && <span className="ml-2 text-xs text-white/40">(tú)</span>}
+            <span className="relative z-10 flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-white">
+              <span className="truncate">{row.display_name ?? "Anónimo"}</span>
+              {isMe && <span className="shrink-0 text-xs text-white/40">(tú)</span>}
+              {isTied && (
+                <span className="shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
+                  empate {row.rank}.º
+                </span>
+              )}
             </span>
 
             {/* Stats */}
