@@ -45,7 +45,9 @@ export function FillableBracket({
   const [picks, setPicks] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
     for (const p of initialPicks) init[`${p.round}:${p.slot}`] = p.predicted_team_id
-    return init
+    // Limpia al cargar cualquier llave que ya no sea válida según la cascada
+    // (p. ej. picks guardados antes de cambiar una ronda previa).
+    return prune(init)
   })
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
