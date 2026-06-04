@@ -73,15 +73,17 @@ export function LeaderboardList({
 
             {/* Avatar + nombre */}
             <Avatar src={row.avatar_url} name={row.display_name} size={32} />
-            <span className="relative z-10 flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-white">
-              <span className="truncate">{row.display_name ?? "Anónimo"}</span>
-              {isMe && <span className="shrink-0 text-xs text-white/40">(tú)</span>}
+            <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+              <span className="flex items-baseline gap-1.5 text-sm font-medium text-white">
+                <span className="truncate">{row.display_name ?? "Anónimo"}</span>
+                {isMe && <span className="shrink-0 text-xs text-white/40">(tú)</span>}
+              </span>
               {isTied && (
-                <span className="shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
+                <span className="mt-0.5 w-fit rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
                   empate {row.rank}.º
                 </span>
               )}
-            </span>
+            </div>
 
             {/* Stats */}
             <div className="relative z-10 flex items-center gap-4 text-right text-sm">

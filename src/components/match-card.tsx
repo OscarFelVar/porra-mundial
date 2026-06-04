@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { motion } from "motion/react"
-import { Check, Lock, Loader2 } from "lucide-react"
+import { Check, Lock, Loader2, Users, ChevronDown } from "lucide-react"
 import { upsertPrediction } from "@/app/dashboard/pronosticos/actions"
 
 export type MatchData = {
@@ -16,6 +16,15 @@ export type MatchData = {
   locked: boolean
   finished: boolean
   result: { home: number; away: number } | null
+  points: number | null
+}
+
+// Pronóstico de otro participante (visible solo cuando el partido se cierra).
+export type OtherPred = {
+  user_id: string
+  name: string
+  home: number
+  away: number
   points: number | null
 }
 
@@ -94,12 +103,21 @@ function formatKickoff(iso: string) {
   }).format(new Date(iso))
 }
 
-export function MatchCard({ match }: { match: MatchData }) {
+export function MatchCard({
+  match,
+  others = [],
+  currentUserId,
+}: {
+  match: MatchData
+  others?: OtherPred[]
+  currentUserId?: string
+}) {
   const [home, setHome] = useState(match.prediction?.home_score?.toString() ?? "")
   const [away, setAway] = useState(match.prediction?.away_score?.toString() ?? "")
   const [saved, setSaved] = useState(!!match.prediction)
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [showAll, setShowAll] = useState(false)
 
   const dirty =
     home !== (match.prediction?.home_score?.toString() ?? "") ||
@@ -235,6 +253,42 @@ export function MatchCard({ match }: { match: MatchData }) {
           </button>
         )}
       </div>
+
+      {/* Pronósticos de todos (solo visible cuando el partido se cierra) */}
+      {(match.locked || match.finished) && others.length > 0 && (
+        <div className="mt-3 border-t border-white/5 pt-3">
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-white/50 transition hover:text-white/80"
+          >
+            <Users size={12} /> Pronósticos de todos ({others.length})
+            <ChevronDown size={12} className={`transition ${showAll ? "rotate-180" : ""}`} />
+          </button>
+
+          {showAll && (
+            <ul className="mt-2 grid gap-1">
+              {others.map((o) => (
+                <li
+                  key={o.user_id}
+                  className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-xs ${
+                    o.user_id === currentUserId ? "bg-white/[0.06]" : ""
+                  }`}
+                >
+                  <span className="min-w-0 flex-1 truncate text-white/70">
+                    {o.name}
+                    {o.user_id === currentUserId && <span className="text-white/40"> (tú)</span>}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="font-semibold text-white/90">{o.home}–{o.away}</span>
+                    {match.finished && <PointsBadge points={o.points} />}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </motion.li>
   )
 }
