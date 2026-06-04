@@ -72,6 +72,31 @@ export async function sendTestEmail(): Promise<{ ok: boolean; error?: string }> 
   }
 }
 
+// Prueba de reenvío COMPLETA: envía un correo con la lista de destinatarios =
+// solo tu propio correo. El Apps Script lo detecta y te reenvía una copia, así
+// verificas toda la cadena (Resend → inbox → Apps Script → reenvío) sin tocar
+// deadlines ni grupos, y sin riesgo de molestar a nadie (solo te llega a ti).
+export async function sendTestForwardEmail(): Promise<{ ok: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
+    return { ok: false, error: "Faltan variables de entorno de email" }
+  }
+  const self = process.env.DIGEST_TO_EMAIL as string
+  const recipientsText =
+    "Prueba de reenvío de la Porra (reenvío gestionado por Apps Script).\n" +
+    `PORRA_RECIPIENTS:${JSON.stringify([self])}`
+  const html =
+    "<h2>Prueba de reenvío — Porra Mundial 2026</h2>" +
+    "<p>Si el Apps Script está bien configurado, en unos minutos te llegará una COPIA reenviada " +
+    "de este correo (con asunto que empieza por «Porra Mundial 2026 ·»).</p>" +
+    recipientsComment([self])
+  try {
+    await sendEmail("[PORRA] Prueba de reenvío", html, recipientsText)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
 export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: string }> {
   if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
     return { sent: [], skipped: "email no configurado" }

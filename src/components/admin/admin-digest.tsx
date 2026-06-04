@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { Check, Loader2, Mail, Send } from "lucide-react"
-import { saveDigestPool, sendTestDigestEmail } from "@/app/dashboard/admin/actions"
+import { saveDigestPool, sendTestDigestEmail, sendTestForwardDigestEmail } from "@/app/dashboard/admin/actions"
 
 export type PoolOption = { id: string; name: string }
 
@@ -23,6 +23,11 @@ export function AdminDigest({
   const [testMsg, setTestMsg] = useState<string | null>(null)
   const [testErr, setTestErr] = useState<string | null>(null)
   const [testPending, startTest] = useTransition()
+
+  // Prueba de reenvío (a tu propio correo)
+  const [fwdMsg, setFwdMsg] = useState<string | null>(null)
+  const [fwdErr, setFwdErr] = useState<string | null>(null)
+  const [fwdPending, startFwd] = useTransition()
 
   function handleSave() {
     setError(null)
@@ -45,6 +50,19 @@ export function AdminDigest({
         setTestMsg("Enviado. Revisa la bandeja de felipe.cvvargas@gmail.com.")
       } catch (e) {
         setTestErr((e as Error).message)
+      }
+    })
+  }
+
+  function handleForwardTest() {
+    setFwdErr(null)
+    setFwdMsg(null)
+    startFwd(async () => {
+      try {
+        await sendTestForwardDigestEmail()
+        setFwdMsg("Enviado. En unos minutos el Apps Script debería reenviarte una copia.")
+      } catch (e) {
+        setFwdErr((e as Error).message)
       }
     })
   }
@@ -109,8 +127,21 @@ export function AdminDigest({
         </button>
         {testMsg && <span className="text-xs text-emerald-400">{testMsg}</span>}
         {testErr && <span className="max-w-[18rem] truncate text-xs text-red-400">{testErr}</span>}
+
+        <button
+          onClick={handleForwardTest}
+          disabled={fwdPending}
+          className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+        >
+          {fwdPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+          {fwdPending ? "Enviando…" : "Probar reenvío (a tu correo)"}
+        </button>
+        {fwdMsg && <span className="text-xs text-emerald-400">{fwdMsg}</span>}
+        {fwdErr && <span className="max-w-[18rem] truncate text-xs text-red-400">{fwdErr}</span>}
+
         <span className="w-full text-[11px] text-white/30">
-          Manda un correo de prueba a tu bandeja vía Resend. No lleva destinatarios, así que el reenvío no actúa.
+          «Email de prueba» comprueba solo Resend (no reenvía). «Probar reenvío» manda un correo con tu
+          propio correo como único destinatario, para que el Apps Script te reenvíe una copia y verifiques toda la cadena.
         </span>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { sendTestEmail } from "@/lib/email/digests"
+import { sendTestEmail, sendTestForwardEmail } from "@/lib/email/digests"
 
 // Verifica que quien llama es admin. RLS es la barrera real (todas las
 // escrituras a matches/app_settings exigen is_admin()); esto solo da un
@@ -79,6 +79,13 @@ export async function sendTestDigestEmail() {
   await assertAdmin()
   const res = await sendTestEmail()
   if (!res.ok) throw new Error(res.error ?? "Error desconocido enviando el email de prueba")
+}
+
+// --- Prueba de reenvío completa: el Apps Script reenvía la copia a tu propio correo ---
+export async function sendTestForwardDigestEmail() {
+  await assertAdmin()
+  const res = await sendTestForwardEmail()
+  if (!res.ok) throw new Error(res.error ?? "Error enviando la prueba de reenvío")
 }
 
 // --- Emails de pronósticos: qué grupo los recibe (null = ninguno) ---
