@@ -37,7 +37,8 @@ export function LeaderboardList({
       {rows.map((row, i) => {
         const isMe = row.user_id === currentUserId
         const isLeader = row.rank === 1
-        const isTied = rankCounts[row.rank] > 1
+        // Un empate a 0 puntos (típico antes de jugarse nada) no se marca: es ruido.
+        const isTied = rankCounts[row.rank] > 1 && row.total_points > 0
 
         return (
           <motion.li
