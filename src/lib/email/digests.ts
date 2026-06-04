@@ -35,7 +35,7 @@ const fmt = (iso: string): string =>
 const recipientsComment = (emails: string[]) =>
   `\n<!--PORRA_RECIPIENTS:${JSON.stringify(emails)}-->\n`
 
-async function sendEmail(subject: string, html: string): Promise<void> {
+async function sendEmail(subject: string, html: string, text: string): Promise<void> {
   const res = await fetch(RESEND_API, {
     method: "POST",
     headers: {
@@ -47,6 +47,7 @@ async function sendEmail(subject: string, html: string): Promise<void> {
       to: [process.env.DIGEST_TO_EMAIL],
       subject,
       html,
+      text, // parte de texto plano: lleva la lista de destinatarios (Gmail no la altera)
     }),
   })
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
@@ -78,7 +79,13 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
   if (members.length === 0) return { sent: [], skipped: "grupo sin miembros" }
 
   const memberIds = members.map((m) => m.userId)
-  const recipients = recipientsComment(members.map((m) => m.email))
+  const memberEmails = members.map((m) => m.email)
+  const recipients = recipientsComment(memberEmails)
+  // Misma lista en la parte de texto plano (Gmail nunca la altera; el Apps Script
+  // la lee de aquí de forma fiable, con el comentario HTML como respaldo).
+  const recipientsText =
+    "Correo automático de la Porra (reenvío gestionado por Apps Script).\n" +
+    `PORRA_RECIPIENTS:${JSON.stringify(memberEmails)}`
 
   const { data: logRows } = await supabase.from("email_log").select("kind, ref")
   const sentSet = new Set((logRows ?? []).map((r) => `${r.kind}:${r.ref}`))
@@ -129,7 +136,7 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
     html += recipients
 
     const subject = `[PORRA] Pronósticos — ${fmt(ref)}`
-    await sendEmail(subject, html)
+    await sendEmail(subject, html, recipientsText)
     await supabase.from("email_log").insert({ kind: "group_slot", ref })
     sent.push({ kind: "group_slot", ref, subject })
   }
@@ -169,7 +176,7 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
       html += `</table>` + recipients
 
       const subject = `[PORRA] Cuadro de eliminatorias`
-      await sendEmail(subject, html)
+      await sendEmail(subject, html, recipientsText)
       await supabase.from("email_log").insert({ kind: "bracket", ref: "main" })
       sent.push({ kind: "bracket", ref: "main", subject })
     }
@@ -199,7 +206,7 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
       html += `</table>` + recipients
 
       const subject = `[PORRA] Apuestas especiales`
-      await sendEmail(subject, html)
+      await sendEmail(subject, html, recipientsText)
       await supabase.from("email_log").insert({ kind: "special", ref: "main" })
       sent.push({ kind: "special", ref: "main", subject })
     }
