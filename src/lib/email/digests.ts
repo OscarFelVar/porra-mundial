@@ -53,6 +53,25 @@ async function sendEmail(subject: string, html: string, text: string): Promise<v
   if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
 }
 
+// Envío de prueba (desde el panel admin): verifica la conexión con Resend al
+// instante. SIN lista de destinatarios → aunque el Apps Script esté activo, no
+// reenvía a nadie (no encuentra recipients). Seguro de ejecutar cuando se quiera.
+export async function sendTestEmail(): Promise<{ ok: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
+    return { ok: false, error: "Faltan variables de entorno de email (RESEND_API_KEY / DIGEST_FROM_EMAIL / DIGEST_TO_EMAIL)" }
+  }
+  const html =
+    "<h2>Prueba de la Porra Mundial 2026</h2>" +
+    "<p>Si recibes este correo, Resend está bien configurado y la app puede enviar.</p>" +
+    "<p>Este es un correo de prueba: no lleva lista de destinatarios, así que el reenvío automático lo ignora.</p>"
+  try {
+    await sendEmail("[PORRA] Prueba de envío", html, "Correo de prueba de la Porra (sin destinatarios, no reenviar).")
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
 export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: string }> {
   if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
     return { sent: [], skipped: "email no configurado" }

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { sendTestEmail } from "@/lib/email/digests"
 
 // Verifica que quien llama es admin. RLS es la barrera real (todas las
 // escrituras a matches/app_settings exigen is_admin()); esto solo da un
@@ -71,6 +72,13 @@ export async function saveMatchResult(
   revalidatePath("/dashboard/admin")
   revalidatePath("/dashboard/pronosticos")
   revalidatePath("/dashboard/tabla")
+}
+
+// --- Email de prueba: verifica la conexión con Resend (no reenvía a nadie) ---
+export async function sendTestDigestEmail() {
+  await assertAdmin()
+  const res = await sendTestEmail()
+  if (!res.ok) throw new Error(res.error ?? "Error desconocido enviando el email de prueba")
 }
 
 // --- Emails de pronósticos: qué grupo los recibe (null = ninguno) ---

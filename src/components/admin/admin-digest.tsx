@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { Check, Loader2, Mail } from "lucide-react"
-import { saveDigestPool } from "@/app/dashboard/admin/actions"
+import { Check, Loader2, Mail, Send } from "lucide-react"
+import { saveDigestPool, sendTestDigestEmail } from "@/app/dashboard/admin/actions"
 
 export type PoolOption = { id: string; name: string }
 
@@ -19,6 +19,11 @@ export function AdminDigest({
   const [isPending, start] = useTransition()
   const dirty = value !== (current ?? "")
 
+  // Email de prueba
+  const [testMsg, setTestMsg] = useState<string | null>(null)
+  const [testErr, setTestErr] = useState<string | null>(null)
+  const [testPending, startTest] = useTransition()
+
   function handleSave() {
     setError(null)
     start(async () => {
@@ -27,6 +32,19 @@ export function AdminDigest({
         setSaved(true)
       } catch (e) {
         setError((e as Error).message)
+      }
+    })
+  }
+
+  function handleTest() {
+    setTestErr(null)
+    setTestMsg(null)
+    startTest(async () => {
+      try {
+        await sendTestDigestEmail()
+        setTestMsg("Enviado. Revisa la bandeja de felipe.cvvargas@gmail.com.")
+      } catch (e) {
+        setTestErr((e as Error).message)
       }
     })
   }
@@ -78,6 +96,23 @@ export function AdminDigest({
           Aún no hay grupos creados. Crea el grupo primero y vuelve aquí para elegirlo.
         </p>
       )}
+
+      {/* Email de prueba: verifica la conexión con Resend (no reenvía a nadie). */}
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+        <button
+          onClick={handleTest}
+          disabled={testPending}
+          className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+        >
+          {testPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+          {testPending ? "Enviando…" : "Enviar email de prueba"}
+        </button>
+        {testMsg && <span className="text-xs text-emerald-400">{testMsg}</span>}
+        {testErr && <span className="max-w-[18rem] truncate text-xs text-red-400">{testErr}</span>}
+        <span className="w-full text-[11px] text-white/30">
+          Manda un correo de prueba a tu bandeja vía Resend. No lleva destinatarios, así que el reenvío no actúa.
+        </span>
+      </div>
     </div>
   )
 }
