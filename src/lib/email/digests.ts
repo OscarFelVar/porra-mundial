@@ -7,7 +7,10 @@ import { createClient } from "@supabase/supabase-js"
 // Inerte si faltan RESEND_API_KEY / DIGEST_FROM_EMAIL / DIGEST_TO_EMAIL.
 
 const RESEND_API = "https://api.resend.com/emails"
+const RESEND_BATCH_API = "https://api.resend.com/emails/batch"
 const LOCK_MS = 15 * 60 * 1000
+const REMINDER_HOUR = 11 // hora (Europe/Madrid) a partir de la cual se manda el recordatorio diario
+const APP_PRONOS_URL = "https://porra-mundial-woad.vercel.app/dashboard/pronosticos"
 
 type Sent = { kind: string; ref: string; subject: string }
 type Member = { userId: string; name: string; email: string }
@@ -257,4 +260,102 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
   }
 
   return { sent }
+}
+
+// ── Recordatorio diario de pronósticos pendientes ───────────────────────────
+// Una vez al día (a partir de REMINDER_HOUR, hora de Madrid) envía a cada miembro
+// de cualquier grupo, DIRECTAMENTE vía Resend (endpoint batch), un correo con los
+// partidos abiertos en las próximas 24h que aún no ha pronosticado. Solo escribe a
+// quien tiene pendientes. Idempotente por día (email_log kind='daily_reminder').
+function madridDateHour(): { date: string; hour: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Madrid",
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hour12: false,
+  }).formatToParts(new Date())
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ""
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) }
+}
+
+export async function dispatchDailyReminders(): Promise<{ sent: number; skipped?: string }> {
+  if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL) {
+    return { sent: 0, skipped: "email no configurado" }
+  }
+  const { date, hour } = madridDateHour()
+  if (hour < REMINDER_HOUR) return { sent: 0, skipped: "aún no es la hora" }
+
+  const supabase = serviceClient()
+
+  // Idempotencia diaria.
+  const { data: log } = await supabase
+    .from("email_log").select("ref")
+    .eq("kind", "daily_reminder").eq("ref", date).maybeSingle()
+  if (log) return { sent: 0, skipped: "ya enviado hoy" }
+
+  // Miembros de CUALQUIER grupo (deduplicados) + email/nombre.
+  const { data: memberRows } = await supabase
+    .from("pool_members")
+    .select("user_id, profile:profiles!inner ( display_name, email )")
+  const usersById = new Map<string, { name: string; email: string }>()
+  for (const m of memberRows ?? []) {
+    const p = m.profile as unknown as { display_name: string | null; email: string }
+    if (!usersById.has(m.user_id)) usersById.set(m.user_id, { name: p.display_name ?? p.email, email: p.email })
+  }
+  if (usersById.size === 0) return { sent: 0, skipped: "sin miembros" }
+
+  // Partidos AÚN ABIERTOS (cierre en el futuro) que arrancan en las próximas 24h.
+  const nowMs = Date.now()
+  const horizon = nowMs + 24 * 60 * 60 * 1000
+  const { data: matchData } = await supabase
+    .from("matches")
+    .select("id, kickoff_at, home:home_team_id ( name ), away:away_team_id ( name )")
+    .order("kickoff_at", { ascending: true })
+  const openMatches = (matchData ?? []).filter((m) => {
+    const k = new Date(m.kickoff_at as string).getTime()
+    return k - LOCK_MS > nowMs && k <= horizon
+  })
+  if (openMatches.length === 0) return { sent: 0, skipped: "sin partidos próximos abiertos" }
+
+  const matchIds = openMatches.map((m) => m.id as string)
+  const userIds = [...usersById.keys()]
+  const { data: preds } = await supabase
+    .from("predictions")
+    .select("user_id, match_id")
+    .is("pool_id", null)
+    .in("match_id", matchIds)
+    .in("user_id", userIds)
+  const predicted = new Set((preds ?? []).map((p) => `${p.user_id}:${p.match_id}`))
+
+  const from = process.env.DIGEST_FROM_EMAIL as string
+  const batch: { from: string; to: string[]; subject: string; html: string }[] = []
+  for (const [uid, u] of usersById) {
+    const pending = openMatches.filter((m) => !predicted.has(`${uid}:${m.id}`))
+    if (pending.length === 0) continue
+    const rows = pending.map((m) => {
+      const home = (m.home as unknown as { name: string } | null)?.name ?? "?"
+      const away = (m.away as unknown as { name: string } | null)?.name ?? "?"
+      return `<li>${esc(home)} vs ${esc(away)} — ${esc(fmt(m.kickoff_at as string))}</li>`
+    }).join("")
+    const html =
+      `<h2>⚽ Te faltan partidos por pronosticar</h2>` +
+      `<p>Hola ${esc(u.name)}, tienes ${pending.length} partido(s) sin pronosticar que se juegan pronto:</p>` +
+      `<ul>${rows}</ul>` +
+      `<p><a href="${APP_PRONOS_URL}">Entra a pronosticar →</a></p>` +
+      `<p style="color:#888;font-size:12px">Recuerda: cada partido cierra 15 minutos antes de empezar.</p>`
+    batch.push({ from, to: [u.email], subject: "⚽ Te faltan partidos por pronosticar — Porra Mundial", html })
+  }
+  if (batch.length === 0) return { sent: 0, skipped: "nadie con pendientes" }
+
+  // Resend batch: hasta 100 por llamada → troceamos por si el grupo crece.
+  for (let i = 0; i < batch.length; i += 100) {
+    const chunk = batch.slice(i, i + 100)
+    const res = await fetch(RESEND_BATCH_API, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(chunk),
+    })
+    if (!res.ok) throw new Error(`Resend batch ${res.status}: ${await res.text()}`)
+  }
+
+  await supabase.from("email_log").insert({ kind: "daily_reminder", ref: date })
+  return { sent: batch.length }
 }

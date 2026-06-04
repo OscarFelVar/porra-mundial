@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
-import { dispatchDigests } from "@/lib/email/digests"
+import { dispatchDigests, dispatchDailyReminders } from "@/lib/email/digests"
 
 const BASE = "https://api.football-data.org/v4"
 
@@ -166,7 +166,15 @@ export async function GET(request: Request) {
       emails = { error: (e as Error).message }
     }
 
-    return Response.json({ ok: true, matches, emails })
+    // Recordatorio diario de pronósticos pendientes (idempotente por día).
+    let reminders: unknown
+    try {
+      reminders = await dispatchDailyReminders()
+    } catch (e) {
+      reminders = { error: (e as Error).message }
+    }
+
+    return Response.json({ ok: true, matches, emails, reminders })
   } catch (e) {
     return Response.json({ error: (e as Error).message }, { status: 500 })
   }
