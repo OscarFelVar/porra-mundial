@@ -67,6 +67,39 @@ async function syncMatches(teamMap: Record<string, string>) {
     .upsert(rows, { onConflict: "external_id" })
 
   if (error) throw new Error(`upsert matches: ${error.message}`)
+
+  // Eliminatorias finalizadas: rellenar advancing_team_id (quién pasó de ronda).
+  // football-data ya resuelve prórroga/penaltis en score.winner, que el marcador
+  // a 90' no refleja. El AFTER UPDATE de `matches` dispara el recálculo del cuadro
+  // (mismo trigger que usa el panel admin), así que basta con escribir la columna.
+  // Solo lo fijamos cuando está null: así nunca pisamos una corrección manual del
+  // admin ni re-disparamos el recálculo en cada sync de 15 min.
+  const knockoutWinners = fdMatches
+    .filter(
+      (m) =>
+        m.stage !== "GROUP_STAGE" &&
+        STATUS_MAP[m.status] === "finished" &&
+        (m.score?.winner === "HOME_TEAM" || m.score?.winner === "AWAY_TEAM") &&
+        teamMap[String(m.homeTeam.id)] &&
+        teamMap[String(m.awayTeam.id)],
+    )
+    .map((m) => ({
+      external_id: String(m.id),
+      advancing:
+        m.score.winner === "HOME_TEAM"
+          ? teamMap[String(m.homeTeam.id)]
+          : teamMap[String(m.awayTeam.id)],
+    }))
+
+  for (const k of knockoutWinners) {
+    const { error: advErr } = await supabase
+      .from("matches")
+      .update({ advancing_team_id: k.advancing })
+      .eq("external_id", k.external_id)
+      .is("advancing_team_id", null)
+    if (advErr) throw new Error(`set advancing ${k.external_id}: ${advErr.message}`)
+  }
+
   return rows.length
 }
 
