@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server"
-import { SpecialBetsForm, type Player } from "@/components/special-bets-form"
+import { SpecialBetsForm } from "@/components/special-bets-form"
 import { Reveal } from "@/components/reveal"
+import { fetchAllPlayers } from "@/lib/players"
 
 export default async function ApuestasPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: betData }, { data: settings }, { data: playersData }] = await Promise.all([
+  const [{ data: betData }, { data: settings }, players] = await Promise.all([
     supabase
       .from("special_bets")
       .select("top_scorer, mvp, best_goalkeeper")
@@ -18,17 +19,8 @@ export default async function ApuestasPage() {
       .select("special_bets_deadline")
       .eq("id", 1)
       .single(),
-    supabase
-      .from("players")
-      .select("name, position, team:teams ( code )")
-      .order("name", { ascending: true }),
+    fetchAllPlayers(supabase),
   ])
-
-  const players: Player[] = (playersData ?? []).map((p) => ({
-    name:     p.name as string,
-    position: (p.position ?? null) as string | null,
-    team:     (p.team as unknown as { code: string | null } | null)?.code ?? null,
-  }))
 
   const deadline = settings?.special_bets_deadline ?? null
   const closed = deadline ? new Date() >= new Date(deadline) : false

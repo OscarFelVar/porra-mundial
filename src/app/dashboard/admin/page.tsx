@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Reveal } from "@/components/reveal"
-import { type Player } from "@/components/player-autocomplete"
+import { fetchAllPlayers } from "@/lib/players"
 import { AdminSpecials } from "@/components/admin/admin-specials"
 import { AdminMatches, type AdminMatch } from "@/components/admin/admin-matches"
 import { AdminDigest, type PoolOption } from "@/components/admin/admin-digest"
@@ -20,16 +20,13 @@ export default async function AdminPage() {
     .single()
   if (!profile?.is_admin) redirect("/dashboard")
 
-  const [{ data: settings }, { data: playersData }, { data: matchesData }, { data: poolsData }] = await Promise.all([
+  const [{ data: settings }, players, { data: matchesData }, { data: poolsData }] = await Promise.all([
     supabase
       .from("app_settings")
       .select("special_bets_deadline, result_top_scorer, result_mvp, result_best_goalkeeper, digest_pool_id")
       .eq("id", 1)
       .single(),
-    supabase
-      .from("players")
-      .select("name, position, team:teams ( code )")
-      .order("name", { ascending: true }),
+    fetchAllPlayers(supabase),
     supabase
       .from("matches")
       .select(`
@@ -48,12 +45,6 @@ export default async function AdminPage() {
   const pools: PoolOption[] = (poolsData ?? []).map((p) => ({
     id:   p.id as string,
     name: p.name as string,
-  }))
-
-  const players: Player[] = (playersData ?? []).map((p) => ({
-    name:     p.name as string,
-    position: (p.position ?? null) as string | null,
-    team:     (p.team as unknown as { code: string | null } | null)?.code ?? null,
   }))
 
   const matches: AdminMatch[] = (matchesData ?? []).map((m) => {
