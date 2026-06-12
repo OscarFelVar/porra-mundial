@@ -4,6 +4,14 @@ import { useState, useTransition } from "react"
 import { motion } from "motion/react"
 import { Check, Lock, Loader2, Users, ChevronDown } from "lucide-react"
 import { upsertPrediction } from "@/app/dashboard/pronosticos/actions"
+import { LocalTime } from "@/components/local-time"
+
+const KICKOFF_FMT: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+}
 
 export type MatchData = {
   id: string
@@ -93,15 +101,6 @@ function TeamCrest({
   return <div className="h-9 w-9 rounded-full bg-white/10" />
 }
 
-function formatKickoff(iso: string) {
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Madrid",
-  }).format(new Date(iso))
-}
 
 export function MatchCard({
   match,
@@ -169,7 +168,7 @@ export function MatchCard({
         >
           {phaseLabel}
         </span>
-        <span className="text-xs text-white/40">{formatKickoff(match.kickoff_at)}</span>
+        <LocalTime iso={match.kickoff_at} options={KICKOFF_FMT} className="text-xs text-white/40" />
       </div>
 
       {/* Teams + score */}

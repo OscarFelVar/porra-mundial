@@ -3,6 +3,11 @@
 import { useMemo, useState, useTransition } from "react"
 import { Check, Loader2 } from "lucide-react"
 import { saveMatchResult, saveAdvancing } from "@/app/dashboard/admin/actions"
+import { LocalTime } from "@/components/local-time"
+
+const MATCH_FMT: Intl.DateTimeFormatOptions = {
+  day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+}
 
 type Team = { id: string; name: string; code: string | null } | null
 
@@ -28,12 +33,6 @@ const PHASES: { key: string; label: string }[] = [
   { key: "tercer_puesto", label: "3er puesto" },
   { key: "final",         label: "Final" },
 ]
-
-const fmtDate = (iso: string) =>
-  new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
-    timeZone: "Europe/Madrid",
-  }).format(new Date(iso))
 
 export function AdminMatches({ matches }: { matches: AdminMatch[] }) {
   // Solo fases que tienen partidos cargados.
@@ -125,7 +124,7 @@ function MatchRow({ match, knockout }: { match: AdminMatch; knockout: boolean })
     <div className="rounded-xl border border-white/10 bg-black/20 p-4">
       <div className="mb-3 flex items-center justify-between text-[11px] text-white/40">
         <span>{match.groupLabel ? `Grupo ${match.groupLabel}` : ""}</span>
-        <span>{fmtDate(match.kickoffAt)}</span>
+        <LocalTime iso={match.kickoffAt} options={MATCH_FMT} />
       </div>
 
       <div className="flex items-center gap-2">

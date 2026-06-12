@@ -4,6 +4,14 @@ import { useState, useTransition } from "react"
 import { Check, Loader2, Lock } from "lucide-react"
 import { upsertSpecialBets } from "@/app/dashboard/apuestas/actions"
 import { PlayerAutocomplete, type Player } from "@/components/player-autocomplete"
+import { LocalTime } from "@/components/local-time"
+
+const DEADLINE_FMT: Intl.DateTimeFormatOptions = {
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+}
 
 export type { Player }
 
@@ -58,9 +66,11 @@ export function SpecialBetsForm({
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
       <div className="mb-5 flex items-center justify-between">
         <p className="text-sm text-white/40">
-          {deadline
-            ? `Cierra: ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid" }).format(new Date(deadline))}`
-            : "Cierran antes del primer partido (11 jun)"}
+          {deadline ? (
+            <>Cierra: <LocalTime iso={deadline} options={DEADLINE_FMT} /></>
+          ) : (
+            "Cierran antes del primer partido (11 jun)"
+          )}
         </p>
         {closed && (
           <span className="flex items-center gap-1 text-xs text-white/30">
