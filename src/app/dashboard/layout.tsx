@@ -6,6 +6,7 @@ import { DashboardNav } from "@/components/dashboard-nav"
 import { Avatar } from "@/components/avatar"
 import { StadiumBackground } from "@/components/stadium-background"
 import { AuthorCredit } from "@/components/author-credit"
+import { RefreshOnFocus } from "@/components/refresh-on-focus"
 import { HelpCircle, Settings } from "lucide-react"
 
 export default async function DashboardLayout({
@@ -28,6 +29,7 @@ export default async function DashboardLayout({
 
   return (
     <>
+      <RefreshOnFocus />
       <StadiumBackground />
       <main className="relative z-0 flex min-h-[100svh] flex-col items-center px-6 py-10 text-white">
         <header className="mb-8 flex w-full max-w-2xl items-center justify-between gap-3">
