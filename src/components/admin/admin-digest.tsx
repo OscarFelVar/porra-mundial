@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { Check, Loader2, Mail, Send } from "lucide-react"
-import { saveDigestPool, sendTestDigestEmail, sendTestForwardDigestEmail } from "@/app/dashboard/admin/actions"
+import { saveDigestPool, sendTestDigestEmail } from "@/app/dashboard/admin/actions"
 
 export type PoolOption = { id: string; name: string }
 
@@ -19,15 +19,10 @@ export function AdminDigest({
   const [isPending, start] = useTransition()
   const dirty = value !== (current ?? "")
 
-  // Email de prueba
+  // Email de prueba (Brevo)
   const [testMsg, setTestMsg] = useState<string | null>(null)
   const [testErr, setTestErr] = useState<string | null>(null)
   const [testPending, startTest] = useTransition()
-
-  // Prueba de reenvío (a tu propio correo)
-  const [fwdMsg, setFwdMsg] = useState<string | null>(null)
-  const [fwdErr, setFwdErr] = useState<string | null>(null)
-  const [fwdPending, startFwd] = useTransition()
 
   function handleSave() {
     setError(null)
@@ -46,23 +41,11 @@ export function AdminDigest({
     setTestMsg(null)
     startTest(async () => {
       try {
-        await sendTestDigestEmail()
-        setTestMsg("Enviado. Revisa la bandeja de felipe.cvvargas@gmail.com.")
+        const res = await sendTestDigestEmail()
+        if (res.ok) setTestMsg("Enviado por Brevo. Revisa tu bandeja (incluido Promociones/Spam).")
+        else setTestErr(res.error ?? "Error desconocido")
       } catch (e) {
         setTestErr((e as Error).message)
-      }
-    })
-  }
-
-  function handleForwardTest() {
-    setFwdErr(null)
-    setFwdMsg(null)
-    startFwd(async () => {
-      try {
-        await sendTestForwardDigestEmail()
-        setFwdMsg("Enviado. En unos minutos el Apps Script debería reenviarte una copia.")
-      } catch (e) {
-        setFwdErr((e as Error).message)
       }
     })
   }
@@ -115,7 +98,7 @@ export function AdminDigest({
         </p>
       )}
 
-      {/* Email de prueba: verifica la conexión con Resend (no reenvía a nadie). */}
+      {/* Email de prueba: verifica la cadena de Brevo enviándote un correo a ti mismo. */}
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
         <button
           onClick={handleTest}
@@ -123,25 +106,14 @@ export function AdminDigest({
           className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
         >
           {testPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-          {testPending ? "Enviando…" : "Enviar email de prueba"}
+          {testPending ? "Enviando…" : "Probar Brevo (a tu correo)"}
         </button>
         {testMsg && <span className="text-xs text-emerald-400">{testMsg}</span>}
         {testErr && <span className="max-w-[18rem] truncate text-xs text-red-400">{testErr}</span>}
 
-        <button
-          onClick={handleForwardTest}
-          disabled={fwdPending}
-          className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
-        >
-          {fwdPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-          {fwdPending ? "Enviando…" : "Probar reenvío (a tu correo)"}
-        </button>
-        {fwdMsg && <span className="text-xs text-emerald-400">{fwdMsg}</span>}
-        {fwdErr && <span className="max-w-[18rem] truncate text-xs text-red-400">{fwdErr}</span>}
-
         <span className="w-full text-[11px] text-white/30">
-          «Email de prueba» comprueba solo Resend (no reenvía). «Probar reenvío» manda un correo con tu
-          propio correo como único destinatario, para que el Apps Script te reenvíe una copia y verifiques toda la cadena.
+          «Probar Brevo» manda un correo de prueba a tu propio correo vía Brevo para verificar al
+          instante que el envío funciona (API key + remitente + entrega), sin tocar plazos ni avisar a nadie.
         </span>
       </div>
     </div>

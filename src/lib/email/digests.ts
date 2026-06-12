@@ -1,12 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 
-// Envío de "fotos" de pronósticos (evidencia) al correo admin vía Resend.
+// Envío de "fotos" de pronósticos (evidencia) DIRECTO a cada miembro vía Brevo.
 // El cron (/api/sync) llama a dispatchDigests() cada 15 min. Solo envía cuando
 // algo acaba de cerrar y aún no se ha enviado (idempotencia vía email_log).
-// El email va a UN solo destinatario (tu inbox) — Apps Script lo reenvía al grupo.
-// Inerte si faltan RESEND_API_KEY / DIGEST_FROM_EMAIL / DIGEST_TO_EMAIL.
+// Cada miembro recibe su propio correo (messageVersions) al cerrarse la franja:
+// es la evidencia anti-manipulación (N buzones con marca de hora previa al
+// resultado). Inerte si faltan BREVO_API_KEY / DIGEST_FROM_EMAIL.
+// Los recordatorios diarios (dispatchDailyReminders) siguen por Resend, aparte.
 
-const RESEND_API = "https://api.resend.com/emails"
+const BREVO_API = "https://api.brevo.com/v3/smtp/email"
 const RESEND_BATCH_API = "https://api.resend.com/emails/batch"
 const LOCK_MS = 15 * 60 * 1000
 const REMINDER_HOUR = 11 // hora (Europe/Madrid) a partir de la cual se manda el recordatorio diario
@@ -33,67 +35,56 @@ const fmt = (iso: string): string =>
     timeZone: "Europe/Madrid",
   }).format(new Date(iso))
 
-// Lista de destinatarios incrustada para que Apps Script sepa a quién reenviar
-// (se mantiene sola con las altas/bajas del grupo). Va en un comentario oculto.
-const recipientsComment = (emails: string[]) =>
-  `\n<!--PORRA_RECIPIENTS:${JSON.stringify(emails)}-->\n`
+type Recipient = { email: string; name: string }
 
-async function sendEmail(subject: string, html: string, text: string): Promise<void> {
-  const res = await fetch(RESEND_API, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: process.env.DIGEST_FROM_EMAIL,
-      to: [process.env.DIGEST_TO_EMAIL],
-      subject,
-      html,
-      text, // parte de texto plano: lleva la lista de destinatarios (Gmail no la altera)
-    }),
-  })
-  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`)
+// DIGEST_FROM_EMAIL puede venir como "Nombre <email>" (formato que aceptaba Resend) o
+// como email pelado. Brevo exige el email solo en sender.email; el nombre va aparte.
+function parseSender(raw: string): { email: string; name: string } {
+  const m = raw.match(/^\s*(.*?)\s*<\s*([^>]+)\s*>\s*$/)
+  if (m) return { name: m[1] || "Porra Mundial 2026", email: m[2].trim() }
+  return { name: "Porra Mundial 2026", email: raw.trim() }
 }
 
-// Envío de prueba (desde el panel admin): verifica la conexión con Resend al
-// instante. SIN lista de destinatarios → aunque el Apps Script esté activo, no
-// reenvía a nadie (no encuentra recipients). Seguro de ejecutar cuando se quiera.
+// Envío directo a cada miembro vía Brevo (API transaccional). messageVersions manda
+// el mismo contenido a todos en una sola llamada, cada uno en su propio correo (no se
+// expone la lista de destinatarios). Trocea de 100 en 100 por si el grupo crece.
+async function sendViaBrevo(subject: string, html: string, recipients: Recipient[]): Promise<void> {
+  if (recipients.length === 0) return
+  const sender = parseSender(process.env.DIGEST_FROM_EMAIL as string)
+  const versions = recipients.map((r) => ({ to: [{ email: r.email, name: r.name }] }))
+  for (let i = 0; i < versions.length; i += 100) {
+    const res = await fetch(BREVO_API, {
+      method: "POST",
+      headers: {
+        "api-key": process.env.BREVO_API_KEY as string,
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify({
+        sender,
+        subject,
+        htmlContent: html,
+        messageVersions: versions.slice(i, i + 100),
+      }),
+    })
+    if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`)
+  }
+}
+
+// Envío de prueba (desde el panel admin): manda un correo por Brevo a tu propio
+// correo (DIGEST_TO_EMAIL) para verificar al instante toda la cadena (API key +
+// remitente + entrega). Solo te llega a ti; seguro de ejecutar cuando quieras.
 export async function sendTestEmail(): Promise<{ ok: boolean; error?: string }> {
-  if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
-    return { ok: false, error: "Faltan variables de entorno de email (RESEND_API_KEY / DIGEST_FROM_EMAIL / DIGEST_TO_EMAIL)" }
+  if (!process.env.BREVO_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
+    return { ok: false, error: "Faltan variables de entorno de email (BREVO_API_KEY / DIGEST_FROM_EMAIL / DIGEST_TO_EMAIL)" }
   }
   const html =
     "<h2>Prueba de la Porra Mundial 2026</h2>" +
-    "<p>Si recibes este correo, Resend está bien configurado y la app puede enviar.</p>" +
-    "<p>Este es un correo de prueba: no lleva lista de destinatarios, así que el reenvío automático lo ignora.</p>"
+    "<p>Si recibes este correo, Brevo está bien configurado y la app puede enviar la evidencia directa a los participantes.</p>"
   try {
-    await sendEmail("[PORRA] Prueba de envío", html, "Correo de prueba de la Porra (sin destinatarios, no reenviar).")
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, error: (e as Error).message }
-  }
-}
-
-// Prueba de reenvío COMPLETA: envía un correo con la lista de destinatarios =
-// solo tu propio correo. El Apps Script lo detecta y te reenvía una copia, así
-// verificas toda la cadena (Resend → inbox → Apps Script → reenvío) sin tocar
-// deadlines ni grupos, y sin riesgo de molestar a nadie (solo te llega a ti).
-export async function sendTestForwardEmail(): Promise<{ ok: boolean; error?: string }> {
-  if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
-    return { ok: false, error: "Faltan variables de entorno de email" }
-  }
-  const self = process.env.DIGEST_TO_EMAIL as string
-  const recipientsText =
-    "Prueba de reenvío de la Porra (reenvío gestionado por Apps Script).\n" +
-    `PORRA_RECIPIENTS:${JSON.stringify([self])}`
-  const html =
-    "<h2>Prueba de reenvío — Porra Mundial 2026</h2>" +
-    "<p>Si el Apps Script está bien configurado, en unos minutos te llegará una COPIA reenviada " +
-    "de este correo (con asunto que empieza por «Porra Mundial 2026 ·»).</p>" +
-    recipientsComment([self])
-  try {
-    await sendEmail("[PORRA] Prueba de reenvío", html, recipientsText)
+    await sendViaBrevo("Prueba de envío — Porra Mundial 2026", html, [
+      { email: process.env.DIGEST_TO_EMAIL as string, name: "Admin" },
+    ])
     return { ok: true }
   } catch (e) {
     return { ok: false, error: (e as Error).message }
@@ -101,7 +92,7 @@ export async function sendTestForwardEmail(): Promise<{ ok: boolean; error?: str
 }
 
 export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: string }> {
-  if (!process.env.RESEND_API_KEY || !process.env.DIGEST_FROM_EMAIL || !process.env.DIGEST_TO_EMAIL) {
+  if (!process.env.BREVO_API_KEY || !process.env.DIGEST_FROM_EMAIL) {
     return { sent: [], skipped: "email no configurado" }
   }
   const supabase = serviceClient()
@@ -126,13 +117,8 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
   if (members.length === 0) return { sent: [], skipped: "grupo sin miembros" }
 
   const memberIds = members.map((m) => m.userId)
-  const memberEmails = members.map((m) => m.email)
-  const recipients = recipientsComment(memberEmails)
-  // Misma lista en la parte de texto plano (Gmail nunca la altera; el Apps Script
-  // la lee de aquí de forma fiable, con el comentario HTML como respaldo).
-  const recipientsText =
-    "Correo automático de la Porra (reenvío gestionado por Apps Script).\n" +
-    `PORRA_RECIPIENTS:${JSON.stringify(memberEmails)}`
+  // Destinatarios para Brevo: cada miembro recibe la evidencia directamente.
+  const recipients: Recipient[] = members.map((m) => ({ email: m.email, name: m.name }))
 
   const { data: logRows } = await supabase.from("email_log").select("kind, ref")
   const sentSet = new Set((logRows ?? []).map((r) => `${r.kind}:${r.ref}`))
@@ -180,10 +166,8 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
       }
       html += `</table>`
     }
-    html += recipients
-
-    const subject = `[PORRA] Pronósticos — ${fmt(ref)}`
-    await sendEmail(subject, html, recipientsText)
+    const subject = `Pronósticos congelados — ${fmt(ref)}`
+    await sendViaBrevo(subject, html, recipients)
     await supabase.from("email_log").insert({ kind: "group_slot", ref })
     sent.push({ kind: "group_slot", ref, subject })
   }
@@ -220,10 +204,10 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
         const champName = champ ? (teamName[champ.predicted_team_id as string] ?? "?") : "—"
         html += `<tr><td>${esc(mem.name)}</td><td>${esc(champName)}</td><td align="center">${(picks ?? []).length}</td></tr>`
       }
-      html += `</table>` + recipients
+      html += `</table>`
 
-      const subject = `[PORRA] Cuadro de eliminatorias`
-      await sendEmail(subject, html, recipientsText)
+      const subject = `Cuadro de eliminatorias congelado`
+      await sendViaBrevo(subject, html, recipients)
       await supabase.from("email_log").insert({ kind: "bracket", ref: "main" })
       sent.push({ kind: "bracket", ref: "main", subject })
     }
@@ -250,10 +234,10 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
         const r = byUser.get(mem.userId)
         html += `<tr><td>${esc(mem.name)}</td><td>${esc(r?.top_scorer ?? "—")}</td><td>${esc(r?.mvp ?? "—")}</td><td>${esc(r?.best_goalkeeper ?? "—")}</td></tr>`
       }
-      html += `</table>` + recipients
+      html += `</table>`
 
-      const subject = `[PORRA] Apuestas especiales`
-      await sendEmail(subject, html, recipientsText)
+      const subject = `Apuestas especiales congeladas`
+      await sendViaBrevo(subject, html, recipients)
       await supabase.from("email_log").insert({ kind: "special", ref: "main" })
       sent.push({ kind: "special", ref: "main", subject })
     }

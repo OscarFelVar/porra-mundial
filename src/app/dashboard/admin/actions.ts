@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { sendTestEmail, sendTestForwardEmail } from "@/lib/email/digests"
+import { sendTestEmail } from "@/lib/email/digests"
 
 // Verifica que quien llama es admin. RLS es la barrera real (todas las
 // escrituras a matches/app_settings exigen is_admin()); esto solo da un
@@ -74,18 +74,12 @@ export async function saveMatchResult(
   revalidatePath("/dashboard/tabla")
 }
 
-// --- Email de prueba: verifica la conexión con Resend (no reenvía a nadie) ---
-export async function sendTestDigestEmail() {
+// --- Email de prueba: verifica la cadena Brevo enviándote un correo a ti mismo ---
+// Devuelve el resultado (no lanza) para que el mensaje de error real de Brevo llegue
+// a la UI: Next.js censura los errores LANZADOS desde un server action en producción.
+export async function sendTestDigestEmail(): Promise<{ ok: boolean; error?: string }> {
   await assertAdmin()
-  const res = await sendTestEmail()
-  if (!res.ok) throw new Error(res.error ?? "Error desconocido enviando el email de prueba")
-}
-
-// --- Prueba de reenvío completa: el Apps Script reenvía la copia a tu propio correo ---
-export async function sendTestForwardDigestEmail() {
-  await assertAdmin()
-  const res = await sendTestForwardEmail()
-  if (!res.ok) throw new Error(res.error ?? "Error enviando la prueba de reenvío")
+  return await sendTestEmail()
 }
 
 // --- Emails de pronósticos: qué grupo los recibe (null = ninguno) ---
