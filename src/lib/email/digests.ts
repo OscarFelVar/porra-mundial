@@ -323,6 +323,7 @@ export async function dispatchDailyReminders(): Promise<{ sent: number; skipped?
       `<h2>⚽ Te faltan partidos por pronosticar</h2>` +
       `<p>Hola ${esc(u.name)}, tienes ${pending.length} partido(s) sin pronosticar que se juegan pronto:</p>` +
       `<ul>${rows}</ul>` +
+      `<p style="color:#888;font-size:12px">Horas en hora de Madrid (España peninsular).</p>` +
       `<p><a href="${APP_PRONOS_URL}">Entra a pronosticar →</a></p>` +
       `<p style="color:#888;font-size:12px">Recuerda: cada partido cierra 15 minutos antes de empezar.</p>`
     batch.push({ from, to: [u.email], subject: "⚽ Te faltan partidos por pronosticar — Porra Mundial", html })
