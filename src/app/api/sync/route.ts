@@ -48,8 +48,18 @@ async function syncMatches(teamMap: Record<string, string>) {
   }
   const { matches: fdMatches }: { matches: FDMatch[] } = await res.json()
 
+  // Partidos ya FINALIZADOS en la BD: NO se tocan en el sync. Así una corrección
+  // manual del admin (o un resultado ya fijado) nunca lo pisa football-data, ni se
+  // borra con null mientras el feed gratuito se retrasa. Quien marca "finished" gana.
+  const { data: finishedRows } = await supabase
+    .from("matches")
+    .select("external_id")
+    .eq("status", "finished")
+  const finishedExt = new Set((finishedRows ?? []).map((r) => r.external_id as string))
+
   const rows = fdMatches
     .filter((m) => teamMap[String(m.homeTeam.id)] && teamMap[String(m.awayTeam.id)])
+    .filter((m) => !finishedExt.has(String(m.id))) // no pisar partidos ya finalizados
     .map((m) => ({
       external_id:   String(m.id),
       phase:         PHASE_MAP[m.stage] ?? "grupos",
@@ -62,11 +72,12 @@ async function syncMatches(teamMap: Record<string, string>) {
       away_score_90: (m.score?.fullTime?.away ?? null) as number | null,
     }))
 
-  const { error } = await supabase
-    .from("matches")
-    .upsert(rows, { onConflict: "external_id" })
-
-  if (error) throw new Error(`upsert matches: ${error.message}`)
+  if (rows.length) {
+    const { error } = await supabase
+      .from("matches")
+      .upsert(rows, { onConflict: "external_id" })
+    if (error) throw new Error(`upsert matches: ${error.message}`)
+  }
 
   // Eliminatorias finalizadas: rellenar advancing_team_id (quién pasó de ronda).
   // football-data ya resuelve prórroga/penaltis en score.winner, que el marcador
