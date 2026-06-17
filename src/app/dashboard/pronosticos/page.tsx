@@ -71,6 +71,7 @@ export default async function PronosticosPage() {
       .select("match_id, user_id, home_score, away_score, points_awarded, profile:user_id ( display_name )")
       .is("pool_id", null)
       .in("match_id", lockedIds)
+      .range(0, 9999)
     for (const p of allPreds ?? []) {
       const name = (p.profile as unknown as { display_name: string | null } | null)?.display_name ?? "Anónimo"
       ;(othersByMatch[p.match_id as string] ??= []).push({
