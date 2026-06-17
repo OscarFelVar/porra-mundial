@@ -31,8 +31,9 @@ export default async function DashboardLayout({
     <>
       <RefreshOnFocus />
       <StadiumBackground />
-      <main className="relative z-0 flex min-h-[100svh] flex-col items-center px-6 py-10 text-white">
-        <header className="mb-8 flex w-full max-w-2xl items-center justify-between gap-3">
+      <main className="relative z-0 flex min-h-[100svh] flex-col items-center px-6 pb-10 text-white">
+        <div className="sticky top-0 z-10 mb-8 w-full max-w-2xl bg-[#05070b]/90 pb-3 pt-6 backdrop-blur-xl">
+        <header className="mb-4 flex w-full items-center justify-between gap-3">
           <Link href="/dashboard" className="flex items-center gap-2" title="Inicio">
             <Image
               src="/icons/trofeo.png"
@@ -90,7 +91,8 @@ export default async function DashboardLayout({
           </div>
         </header>
 
-        <DashboardNav />
+          <DashboardNav />
+        </div>
 
         {children}
 

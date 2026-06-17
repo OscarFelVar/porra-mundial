@@ -17,7 +17,7 @@ export function DashboardNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="mb-8 flex w-full max-w-2xl gap-1 rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur">
+    <nav className="flex w-full max-w-2xl gap-1 rounded-2xl border border-white/10 bg-white/5 p-1 backdrop-blur">
       {tabs.map(({ href, label, icon: Icon }) => {
         const active = pathname === href
         return (
