@@ -66,12 +66,22 @@ export default async function PronosticosPage() {
   const lockedIds = matchData.filter((m) => m.locked).map((m) => m.id)
   const othersByMatch: Record<string, OtherPred[]> = {}
   if (lockedIds.length > 0) {
-    const { data: allPreds } = await supabase
-      .from("predictions")
-      .select("match_id, user_id, home_score, away_score, points_awarded, profile:user_id ( display_name )")
-      .is("pool_id", null)
-      .in("match_id", lockedIds)
-      .range(0, 9999)
+    // Supabase corta a 1000 filas por request (max-rows de PostgREST).
+    // Con 50 usuarios × 30+ partidos cerrados ya superamos ese límite.
+    // Paginamos igual que fetchAllPlayers().
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allPreds: any[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data: page } = await supabase
+        .from("predictions")
+        .select("match_id, user_id, home_score, away_score, points_awarded, profile:user_id ( display_name )")
+        .is("pool_id", null)
+        .in("match_id", lockedIds)
+        .range(from, from + 999)
+      const rows = page ?? []
+      allPreds.push(...rows)
+      if (rows.length < 1000) break
+    }
     for (const p of allPreds ?? []) {
       const name = (p.profile as unknown as { display_name: string | null } | null)?.display_name ?? "Anónimo"
       ;(othersByMatch[p.match_id as string] ??= []).push({
