@@ -32,7 +32,7 @@ export default async function DashboardLayout({
       <RefreshOnFocus />
       <StadiumBackground />
       <main className="relative z-0 flex min-h-[100svh] flex-col items-center px-6 pb-10 text-white">
-        <div className="sticky top-0 z-10 mb-8 w-full max-w-2xl bg-[#05070b]/90 pb-3 pt-6 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 mb-8 w-full max-w-2xl bg-gradient-to-b from-[#05070b]/90 to-[#05070b]/60 pb-3 pt-6 backdrop-blur-xl border-b border-white/[0.06]">
         <header className="mb-4 flex w-full items-center justify-between gap-3">
           <Link href="/dashboard" className="flex items-center gap-2" title="Inicio">
             <Image
