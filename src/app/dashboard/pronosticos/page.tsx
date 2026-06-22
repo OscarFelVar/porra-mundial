@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { getCachedMatches, getCachedOtherPredictions } from "@/lib/cached-queries"
+import { getCachedMatches } from "@/lib/cached-queries"
 import { MatchCard, type MatchData, type OtherPred } from "@/components/match-card"
 import { DayGroup } from "@/components/day-group"
 import { Reveal } from "@/components/reveal"
@@ -12,11 +12,9 @@ export default async function PronosticosPage() {
       data: { user },
     },
     matches,
-    othersByMatchRaw,
   ] = await Promise.all([
     supabase.auth.getUser(),
     getCachedMatches(),
-    getCachedOtherPredictions(),
   ])
 
   const { data: predictions } = await supabase
@@ -51,18 +49,45 @@ export default async function PronosticosPage() {
     }
   })
 
-  // Ordenar pronósticos de otros
+  // Pronósticos de TODOS: la RLS solo devuelve los ajenos cuando
+  // now >= kickoff − 15 min y se comparte grupo con el usuario.
+  const lockedIds = matchData.filter((m) => m.locked).map((m) => m.id)
   const othersByMatch: Record<string, OtherPred[]> = {}
-  for (const id of Object.keys(othersByMatchRaw)) {
-    const finished = matchData.find((m) => m.id === id)?.finished
-    othersByMatch[id] = [...(othersByMatchRaw[id] ?? [])].sort((a, b) =>
-      finished
-        ? (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name)
-        : a.name.localeCompare(b.name),
-    )
+  if (lockedIds.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allPreds: any[] = []
+    for (let from = 0; ; from += 1000) {
+      const { data: page } = await supabase
+        .from("predictions")
+        .select("match_id, user_id, home_score, away_score, points_awarded, profile:user_id ( display_name )")
+        .is("pool_id", null)
+        .in("match_id", lockedIds)
+        .range(from, from + 999)
+      const rows = page ?? []
+      allPreds.push(...rows)
+      if (rows.length < 1000) break
+    }
+    for (const p of allPreds ?? []) {
+      const name = (p.profile as unknown as { display_name: string | null } | null)?.display_name ?? "Anónimo"
+      ;(othersByMatch[p.match_id as string] ??= []).push({
+        user_id: p.user_id as string,
+        name,
+        home:    p.home_score as number,
+        away:    p.away_score as number,
+        points:  (p.points_awarded ?? null) as number | null,
+      })
+    }
+    for (const id of Object.keys(othersByMatch)) {
+      const finished = matchData.find((m) => m.id === id)?.finished
+      othersByMatch[id].sort((a, b) =>
+        finished
+          ? (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name)
+          : a.name.localeCompare(b.name),
+      )
+    }
   }
 
-  // Agrupar partidos por día (UTC date del kickoff)
+  // Agrupar partidos por día
   const dayMap = new Map<string, MatchData[]>()
   for (const m of matchData) {
     const dateKey = m.kickoff_at.slice(0, 10)

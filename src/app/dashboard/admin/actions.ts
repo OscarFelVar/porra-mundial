@@ -70,7 +70,6 @@ export async function saveMatchResult(
     .eq("id", matchId)
   if (error) throw new Error(error.message)
   revalidateTag("matches", "default")
-  revalidateTag("predictions", "default")
   revalidatePath("/dashboard/admin")
   revalidatePath("/dashboard/pronosticos")
   revalidatePath("/dashboard/tabla")

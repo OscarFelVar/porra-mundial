@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 
 export async function upsertPrediction(
@@ -17,6 +17,5 @@ export async function upsertPrediction(
     p_away_score: awayScore,
   })
   if (error) throw new Error(error.message)
-  revalidateTag("predictions", "default")
   revalidatePath("/dashboard/pronosticos")
 }
