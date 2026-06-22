@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getCachedMatches, getCachedOtherPredictions } from "@/lib/cached-queries"
 import { MatchCard, type MatchData, type OtherPred } from "@/components/match-card"
+import { DayGroup } from "@/components/day-group"
 import { Reveal } from "@/components/reveal"
 
 export default async function PronosticosPage() {
@@ -29,7 +30,7 @@ export default async function PronosticosPage() {
   )
 
   const nowMs = new Date().getTime()
-  const LOCK_MS = 15 * 60 * 1000 // se cierra 15 min antes del kickoff
+  const LOCK_MS = 15 * 60 * 1000
 
   const matchData: MatchData[] = (matches ?? []).map((m) => {
     const pred = predByMatch[m.id] ?? null
@@ -50,7 +51,7 @@ export default async function PronosticosPage() {
     }
   })
 
-  // Ordenar pronósticos de otros: por puntos si finalizado, alfabético si no.
+  // Ordenar pronósticos de otros
   const othersByMatch: Record<string, OtherPred[]> = {}
   for (const id of Object.keys(othersByMatchRaw)) {
     const finished = matchData.find((m) => m.id === id)?.finished
@@ -60,6 +61,33 @@ export default async function PronosticosPage() {
         : a.name.localeCompare(b.name),
     )
   }
+
+  // Agrupar partidos por día (UTC date del kickoff)
+  const dayMap = new Map<string, MatchData[]>()
+  for (const m of matchData) {
+    const dateKey = m.kickoff_at.slice(0, 10)
+    if (!dayMap.has(dateKey)) dayMap.set(dateKey, [])
+    dayMap.get(dateKey)!.push(m)
+  }
+
+  const todayKey = new Date().toISOString().slice(0, 10)
+
+  const dayGroups = [...dayMap.entries()].map(([dateKey, dayMatches]) => {
+    const allFinished = dayMatches.every((m) => m.finished)
+    const isToday = dateKey === todayKey
+    const isFuture = dateKey > todayKey
+    const pointsEarned = dayMatches.reduce((sum, m) => sum + (m.points ?? 0), 0)
+
+    return {
+      dateKey,
+      firstKickoff: dayMatches[0].kickoff_at,
+      matches: dayMatches,
+      allFinished,
+      isToday,
+      defaultOpen: isToday || isFuture || !allFinished,
+      pointsEarned: allFinished ? pointsEarned : null,
+    }
+  })
 
   if (matchData.length === 0) {
     return (
@@ -80,16 +108,28 @@ export default async function PronosticosPage() {
           </span>
         </h2>
       </Reveal>
-      <ul className="grid gap-3">
-        {matchData.map((m) => (
-          <MatchCard
-            key={m.id}
-            match={m}
-            others={othersByMatch[m.id] ?? []}
-            currentUserId={user?.id}
-          />
+      <div className="grid gap-3">
+        {dayGroups.map((g) => (
+          <DayGroup
+            key={g.dateKey}
+            firstKickoff={g.firstKickoff}
+            matchCount={g.matches.length}
+            allFinished={g.allFinished}
+            pointsEarned={g.pointsEarned}
+            defaultOpen={g.defaultOpen}
+            isToday={g.isToday}
+          >
+            {g.matches.map((m) => (
+              <MatchCard
+                key={m.id}
+                match={m}
+                others={othersByMatch[m.id] ?? []}
+                currentUserId={user?.id}
+              />
+            ))}
+          </DayGroup>
         ))}
-      </ul>
+      </div>
     </section>
   )
 }
