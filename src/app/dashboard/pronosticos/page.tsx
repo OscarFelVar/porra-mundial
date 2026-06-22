@@ -1,32 +1,21 @@
 import { createClient } from "@/lib/supabase/server"
+import { getCachedMatches, getCachedOtherPredictions } from "@/lib/cached-queries"
 import { MatchCard, type MatchData, type OtherPred } from "@/components/match-card"
 import { Reveal } from "@/components/reveal"
 
 export default async function PronosticosPage() {
   const supabase = await createClient()
 
-  // getUser y la consulta de partidos no dependen entre sí: en paralelo.
   const [
     {
       data: { user },
     },
-    { data: matches },
+    matches,
+    othersByMatchRaw,
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase
-      .from("matches")
-      .select(`
-        id,
-        phase,
-        group_label,
-        kickoff_at,
-        status,
-        home_score_90,
-        away_score_90,
-        home_team:home_team_id ( id, name, code, crest_url ),
-        away_team:away_team_id ( id, name, code, crest_url )
-      `)
-      .order("kickoff_at", { ascending: true }),
+    getCachedMatches(),
+    getCachedOtherPredictions(),
   ])
 
   const { data: predictions } = await supabase
@@ -61,46 +50,15 @@ export default async function PronosticosPage() {
     }
   })
 
-  // Pronósticos de TODOS: solo en partidos ya cerrados (la RLS de predictions
-  // únicamente devuelve los ajenos cuando now >= kickoff − 15 min y se comparte grupo).
-  const lockedIds = matchData.filter((m) => m.locked).map((m) => m.id)
+  // Ordenar pronósticos de otros: por puntos si finalizado, alfabético si no.
   const othersByMatch: Record<string, OtherPred[]> = {}
-  if (lockedIds.length > 0) {
-    // Supabase corta a 1000 filas por request (max-rows de PostgREST).
-    // Con 50 usuarios × 30+ partidos cerrados ya superamos ese límite.
-    // Paginamos igual que fetchAllPlayers().
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const allPreds: any[] = []
-    for (let from = 0; ; from += 1000) {
-      const { data: page } = await supabase
-        .from("predictions")
-        .select("match_id, user_id, home_score, away_score, points_awarded, profile:user_id ( display_name )")
-        .is("pool_id", null)
-        .in("match_id", lockedIds)
-        .range(from, from + 999)
-      const rows = page ?? []
-      allPreds.push(...rows)
-      if (rows.length < 1000) break
-    }
-    for (const p of allPreds ?? []) {
-      const name = (p.profile as unknown as { display_name: string | null } | null)?.display_name ?? "Anónimo"
-      ;(othersByMatch[p.match_id as string] ??= []).push({
-        user_id: p.user_id as string,
-        name,
-        home:    p.home_score as number,
-        away:    p.away_score as number,
-        points:  (p.points_awarded ?? null) as number | null,
-      })
-    }
-    // Orden: partidos finalizados por puntos desc; el resto, alfabético.
-    for (const id of Object.keys(othersByMatch)) {
-      const finished = matchData.find((m) => m.id === id)?.finished
-      othersByMatch[id].sort((a, b) =>
-        finished
-          ? (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name)
-          : a.name.localeCompare(b.name),
-      )
-    }
+  for (const id of Object.keys(othersByMatchRaw)) {
+    const finished = matchData.find((m) => m.id === id)?.finished
+    othersByMatch[id] = [...(othersByMatchRaw[id] ?? [])].sort((a, b) =>
+      finished
+        ? (b.points ?? -1) - (a.points ?? -1) || a.name.localeCompare(b.name)
+        : a.name.localeCompare(b.name),
+    )
   }
 
   if (matchData.length === 0) {

@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { sendTestEmail } from "@/lib/email/digests"
 
@@ -69,6 +69,8 @@ export async function saveMatchResult(
     })
     .eq("id", matchId)
   if (error) throw new Error(error.message)
+  revalidateTag("matches", "default")
+  revalidateTag("predictions", "default")
   revalidatePath("/dashboard/admin")
   revalidatePath("/dashboard/pronosticos")
   revalidatePath("/dashboard/tabla")
@@ -101,6 +103,7 @@ export async function saveAdvancing(matchId: string, teamId: string | null) {
     .update({ advancing_team_id: teamId })
     .eq("id", matchId)
   if (error) throw new Error(error.message)
+  revalidateTag("matches", "default")
   revalidatePath("/dashboard/admin")
   revalidatePath("/dashboard/bracket")
   revalidatePath("/dashboard/tabla")

@@ -16,7 +16,7 @@ export function RefreshOnFocus() {
     function maybeRefresh() {
       if (document.visibilityState !== "visible") return
       const now = Date.now()
-      if (now - lastRefresh.current < 5000) return // evita ráfagas (toggles rápidos)
+      if (now - lastRefresh.current < 120_000) return
       lastRefresh.current = now
       router.refresh()
     }

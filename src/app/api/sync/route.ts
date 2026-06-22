@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { revalidateTag } from "next/cache"
 import { dispatchDigests, dispatchDailyReminders } from "@/lib/email/digests"
 
 const BASE = "https://api.football-data.org/v4"
@@ -200,6 +201,9 @@ export async function GET(request: Request) {
     )
 
     const matches = await syncMatches(teamMap)
+
+    revalidateTag("matches", "default")
+    revalidateTag("predictions", "default")
 
     // Tras sincronizar, envía las "fotos" de pronósticos que acaban de cerrar.
     // Blindado: un fallo de email NUNCA debe romper el sync.
