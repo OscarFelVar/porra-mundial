@@ -63,6 +63,17 @@ async function syncMatches(teamMap: Record<string, string>) {
     .eq("status", "finished")
   const finishedExt = new Set((finishedRows ?? []).map((r) => r.external_id as string))
 
+  // Equipos ya confirmados en BD para dieciseisavos: evita que un sync con datos TBD
+  // machaque equipos reales que ya estaban guardados (football-data puede devolver TBD
+  // transitoriamente aunque el cruce ya se conozca).
+  const { data: existingR32 } = await supabase
+    .from("matches")
+    .select("external_id, home_team_id, away_team_id")
+    .eq("phase", "dieciseisavos")
+  const existingR32Map = new Map(
+    (existingR32 ?? []).map((m) => [String(m.external_id), m])
+  )
+
   const rows = fdMatches
     .filter((m) => {
       const phase = PHASE_MAP[m.stage] ?? "grupos"
@@ -73,17 +84,36 @@ async function syncMatches(teamMap: Record<string, string>) {
       return teamMap[String(m.homeTeam.id)] && teamMap[String(m.awayTeam.id)]
     })
     .filter((m) => !finishedExt.has(String(m.id))) // no pisar partidos ya finalizados
-    .map((m) => ({
-      external_id:   String(m.id),
-      phase:         PHASE_MAP[m.stage] ?? "grupos",
-      group_label:   m.group ? (m.group as string).replace("GROUP_", "") : null,
-      home_team_id:  teamMap[String(m.homeTeam.id)] ?? TBD_TEAM_ID,
-      away_team_id:  teamMap[String(m.awayTeam.id)] ?? TBD_TEAM_ID,
-      kickoff_at:    m.utcDate as string,
-      status:        STATUS_MAP[m.status] ?? "scheduled",
-      home_score_90: (m.score?.fullTime?.home ?? null) as number | null,
-      away_score_90: (m.score?.fullTime?.away ?? null) as number | null,
-    }))
+    .map((m) => {
+      const extId   = String(m.id)
+      const phase   = PHASE_MAP[m.stage] ?? "grupos"
+      const mappedHome = teamMap[String(m.homeTeam?.id)]
+      const mappedAway = teamMap[String(m.awayTeam?.id)]
+      let homeTeamId = mappedHome ?? TBD_TEAM_ID
+      let awayTeamId = mappedAway ?? TBD_TEAM_ID
+
+      // Para dieciseisavos: si la API devuelve TBD pero ya tenemos equipo real en BD,
+      // conservamos el equipo confirmado (evita regresión al reabrir el fixture).
+      if (phase === "dieciseisavos") {
+        const existing = existingR32Map.get(extId)
+        if (existing) {
+          if (!mappedHome && existing.home_team_id !== TBD_TEAM_ID) homeTeamId = existing.home_team_id
+          if (!mappedAway && existing.away_team_id !== TBD_TEAM_ID) awayTeamId = existing.away_team_id
+        }
+      }
+
+      return {
+        external_id:   extId,
+        phase,
+        group_label:   m.group ? (m.group as string).replace("GROUP_", "") : null,
+        home_team_id:  homeTeamId,
+        away_team_id:  awayTeamId,
+        kickoff_at:    m.utcDate as string,
+        status:        STATUS_MAP[m.status] ?? "scheduled",
+        home_score_90: (m.score?.fullTime?.home ?? null) as number | null,
+        away_score_90: (m.score?.fullTime?.away ?? null) as number | null,
+      }
+    })
 
   if (rows.length) {
     const { error } = await supabase
