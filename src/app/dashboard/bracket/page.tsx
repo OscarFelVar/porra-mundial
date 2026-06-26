@@ -4,6 +4,8 @@ import { Bracket, type BracketMatch } from "@/components/bracket"
 import { FillableBracket, type R32Match, type Team } from "@/components/fillable-bracket"
 import { BracketMyPicks, type MyPick } from "@/components/bracket-my-picks"
 import { BracketTabs } from "@/components/bracket-tabs"
+import Link from "next/link"
+import { Users } from "lucide-react"
 
 const MOCK_NAMES = [
   "España", "Francia", "Brasil", "Argentina", "Alemania", "Inglaterra", "Portugal", "Países Bajos",
@@ -20,11 +22,20 @@ function mockR32(): R32Match[] {
 function Heading() {
   return (
     <Reveal>
-      <h2 className="mb-5 font-[family-name:var(--font-display)] text-3xl uppercase tracking-tight">
-        <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
-          Eliminatorias
-        </span>
-      </h2>
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h2 className="font-[family-name:var(--font-display)] text-3xl uppercase tracking-tight">
+          <span className="bg-gradient-to-r from-emerald-300 via-lime-200 to-cyan-300 bg-clip-text text-transparent">
+            Eliminatorias
+          </span>
+        </h2>
+        <Link
+          href="/dashboard/bracket/todos"
+          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/50 transition hover:text-white"
+        >
+          <Users size={12} />
+          Ver todos
+        </Link>
+      </div>
     </Reveal>
   )
 }

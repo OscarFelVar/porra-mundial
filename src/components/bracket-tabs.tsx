@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { Users } from "lucide-react"
-import Link from "next/link"
 
 const TABS = [
   { key: "real",  label: "Cuadro real" },
@@ -37,14 +35,6 @@ export function BracketTabs({
             {t.label}
           </button>
         ))}
-
-        <Link
-          href="/dashboard/bracket/todos"
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/50 transition hover:text-white"
-        >
-          <Users size={12} />
-          Ver todos
-        </Link>
       </div>
 
       {tab === "real"  && real}
