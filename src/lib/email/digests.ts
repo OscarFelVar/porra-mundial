@@ -195,16 +195,55 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
         byUser.get(p.user_id)!.push(p)
       }
 
-      let html = `<h2>Cuadro de eliminatorias congelado</h2>`
-      html += `<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse">`
-      html += `<tr><td><b>Participante</b></td><td><b>Campeón</b></td><td><b>Llaves</b></td></tr>`
+      const TBD_ID = "00000000-0000-0000-0000-000000000001"
+      const BRACKET_ROUNDS: { key: string; label: string; slots: number }[] = [
+        { key: "final",         label: "Campeón 🏆",   slots: 1 },
+        { key: "tercer_puesto", label: "3.er puesto",   slots: 1 },
+        { key: "semifinal",     label: "Semifinales",   slots: 2 },
+        { key: "cuartos",       label: "Cuartos",       slots: 4 },
+        { key: "octavos",       label: "Octavos",       slots: 8 },
+        { key: "dieciseisavos", label: "16avos",        slots: 16 },
+      ]
+
+      let html = `<h2 style="font-family:Arial,sans-serif">Cuadro de eliminatorias congelado</h2>`
+
+      // Resumen: campeón de cada participante
+      html += `<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;margin-bottom:24px">`
+      html += `<tr style="background:#f0f0f0"><td><b>Participante</b></td><td><b>Campeón</b></td><td><b>Llaves</b></td></tr>`
       for (const mem of members) {
         const picks = byUser.get(mem.userId) ?? []
         const champ = (picks ?? []).find((p) => p.round === "final" && p.slot === 0)
-        const champName = champ ? (teamName[champ.predicted_team_id as string] ?? "?") : "—"
-        html += `<tr><td>${esc(mem.name)}</td><td>${esc(champName)}</td><td align="center">${(picks ?? []).length}</td></tr>`
+        const champName = champ && champ.predicted_team_id !== TBD_ID
+          ? (teamName[champ.predicted_team_id as string] ?? "?")
+          : "—"
+        html += `<tr><td>${esc(mem.name)}</td><td><b>${esc(champName)}</b></td><td align="center">${(picks ?? []).length}</td></tr>`
       }
       html += `</table>`
+
+      // Detalle completo por participante
+      for (const mem of members) {
+        const picks = byUser.get(mem.userId) ?? []
+        if (picks.length === 0) continue
+        const pickMap = new Map((picks ?? []).map((p) => [`${p.round}:${p.slot}`, p]))
+
+        html += `<h3 style="font-family:Arial,sans-serif;margin-bottom:6px">${esc(mem.name)}</h3>`
+        html += `<table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;margin-bottom:20px;font-size:13px">`
+        for (const round of BRACKET_ROUNDS) {
+          const teams: string[] = []
+          for (let s = 0; s < round.slots; s++) {
+            const p = pickMap.get(`${round.key}:${s}`)
+            if (p && p.predicted_team_id !== TBD_ID) {
+              teams.push(teamName[p.predicted_team_id as string] ?? "?")
+            }
+          }
+          if (teams.length === 0) continue
+          html += `<tr>`
+          html += `<td style="background:#f5f5f5;white-space:nowrap"><b>${esc(round.label)}</b></td>`
+          html += `<td>${teams.map(esc).join(", ")}</td>`
+          html += `</tr>`
+        }
+        html += `</table>`
+      }
 
       const subject = `Cuadro de eliminatorias congelado`
       await sendViaBrevo(subject, html, recipients)

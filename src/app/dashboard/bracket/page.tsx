@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { Reveal } from "@/components/reveal"
 import { Bracket, type BracketMatch } from "@/components/bracket"
 import { FillableBracket, type R32Match, type Team } from "@/components/fillable-bracket"
+import { BracketMyPicks, type MyPick } from "@/components/bracket-my-picks"
+import { BracketTabs } from "@/components/bracket-tabs"
 
 const MOCK_NAMES = [
   "España", "Francia", "Brasil", "Argentina", "Alemania", "Inglaterra", "Portugal", "Países Bajos",
@@ -49,9 +51,6 @@ export default async function BracketPage({
     .neq("phase", "grupos")
     .order("kickoff_at", { ascending: true })
 
-  // Ordenar dieciseisavos por external_id numérico (asignado por football-data.org
-  // al crear el fixture, es estable aunque los equipos se confirmen después).
-  // Evita que slots se desplacen cuando se van publicando nuevos cruces.
   const r32Real = (koMatches ?? [])
     .filter((m) => m.phase === "dieciseisavos")
     .sort((a, b) => parseInt(a.external_id ?? "0") - parseInt(b.external_id ?? "0"))
@@ -60,18 +59,19 @@ export default async function BracketPage({
     : null
   const open = firstKickoff != null && new Date().getTime() < firstKickoff - 15 * 60 * 1000
 
-  const { data: picks } = await supabase
+  const { data: picksRaw } = await supabase
     .from("bracket_predictions")
-    .select("round, slot, predicted_team_id")
+    .select("round, slot, predicted_team_id, points_awarded")
     .eq("user_id", user!.id)
     .is("pool_id", null)
 
-  // UUID del equipo placeholder "Por definir" (sincronizado con sync/route.ts).
+  const picks = (picksRaw ?? []) as MyPick[]
+
+  // UUID del equipo placeholder "Por definir"
   const TBD_TEAM_ID = "00000000-0000-0000-0000-000000000001"
 
-  // Cuadro ABIERTO (dieciseisavos reales, sin empezar) → rellenable real.
+  // Cuadro ABIERTO → rellenable real.
   if (open) {
-    // Pasar los 16 slots (incluidos TBD) para que la cascada sea correcta.
     const matches: R32Match[] = r32Real.map((m, i) => ({
       slot: i,
       home: m.home_team as unknown as Team,
@@ -80,12 +80,12 @@ export default async function BracketPage({
     return (
       <section className="w-full max-w-7xl">
         <Heading />
-        <FillableBracket matches={matches} initialPicks={picks ?? []} tbdTeamId={TBD_TEAM_ID} />
+        <FillableBracket matches={matches} initialPicks={picks} tbdTeamId={TBD_TEAM_ID} />
       </section>
     )
   }
 
-  // DEMO (sin datos reales aún) → rellenable de prueba, sin guardar.
+  // DEMO → rellenable de prueba.
   if (isDemo && firstKickoff == null) {
     return (
       <section className="w-full max-w-7xl">
@@ -95,7 +95,7 @@ export default async function BracketPage({
     )
   }
 
-  // Cerrado o sin datos → cuadro de solo lectura (resultados reales / vacío).
+  // CERRADO → cuadro real + mis picks con puntos.
   const knockout: BracketMatch[] = (koMatches ?? []).map((m) => ({
     id:                m.id,
     phase:             m.phase,
@@ -108,10 +108,24 @@ export default async function BracketPage({
     away_team:         m.away_team as unknown as BracketMatch["away_team"],
   }))
 
+  // Todos los equipos de los partidos KO para mostrar escudos en "Mis picks"
+  const teamsMap = new Map<string, Team>()
+  for (const m of koMatches ?? []) {
+    const home = m.home_team as unknown as Team | null
+    const away = m.away_team as unknown as Team | null
+    if (home?.id && home.id !== TBD_TEAM_ID) teamsMap.set(home.id, home)
+    if (away?.id && away.id !== TBD_TEAM_ID) teamsMap.set(away.id, away)
+  }
+  const teams = [...teamsMap.values()]
+
   return (
     <section className="w-full max-w-7xl">
       <Heading />
-      <Bracket matches={knockout} />
+      <BracketTabs
+        hasPicks={picks.length > 0}
+        real={<Bracket matches={knockout} />}
+        myPicks={<BracketMyPicks picks={picks} teams={teams} />}
+      />
     </section>
   )
 }
