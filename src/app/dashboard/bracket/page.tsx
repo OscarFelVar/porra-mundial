@@ -66,10 +66,51 @@ export default async function BracketPage({
     .eq("user_id", user!.id)
     .is("pool_id", null)
 
-  const picks = (picksRaw ?? []) as MyPick[]
-
   // UUID del equipo placeholder "Por definir"
   const TBD_TEAM_ID = "00000000-0000-0000-0000-000000000001"
+
+  let picks = (picksRaw ?? []) as MyPick[]
+
+  // En modo preview generamos picks ficticios con los equipos reales para
+  // poder ver el diseño completo sin esperar a que la gente rellene el cuadro.
+  if (forceClose && picks.length === 0) {
+    const r32Teams = r32Real
+      .map((m) => ({
+        home: m.home_team as unknown as Team | null,
+        away: m.away_team as unknown as Team | null,
+      }))
+      .filter((p) => p.home?.id && p.home.id !== TBD_TEAM_ID)
+
+    const mockPicks: MyPick[] = []
+    // dieciseisavos: home de cada cruce, mezcla de estados
+    for (let s = 0; s < Math.min(16, r32Teams.length); s++) {
+      const t = r32Teams[s].home!
+      mockPicks.push({
+        round: "dieciseisavos", slot: s, predicted_team_id: t.id,
+        points_awarded: s < 4 ? 5 : s < 8 ? 0 : null,
+      })
+    }
+    // octavos: home del cruce 0, 2, 4… (cada par de dieciseisavos)
+    for (let s = 0; s < 8; s++) {
+      const t = r32Teams[Math.min(s * 2, r32Teams.length - 1)].home!
+      mockPicks.push({ round: "octavos", slot: s, predicted_team_id: t.id, points_awarded: s < 2 ? 10 : null })
+    }
+    // cuartos
+    for (let s = 0; s < 4; s++) {
+      const t = r32Teams[Math.min(s * 4, r32Teams.length - 1)].home!
+      mockPicks.push({ round: "cuartos", slot: s, predicted_team_id: t.id, points_awarded: null })
+    }
+    // semifinal
+    for (let s = 0; s < 2; s++) {
+      const t = r32Teams[Math.min(s * 8, r32Teams.length - 1)].home!
+      mockPicks.push({ round: "semifinal", slot: s, predicted_team_id: t.id, points_awarded: null })
+    }
+    // final + tercer_puesto
+    if (r32Teams[0]) mockPicks.push({ round: "final",         slot: 0, predicted_team_id: r32Teams[0].home!.id, points_awarded: null })
+    if (r32Teams[4]) mockPicks.push({ round: "tercer_puesto", slot: 0, predicted_team_id: r32Teams[4].home!.id, points_awarded: null })
+
+    picks = mockPicks
+  }
 
   // Cuadro ABIERTO → rellenable real.
   if (open && !forceClose) {
