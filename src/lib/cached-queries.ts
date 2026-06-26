@@ -24,6 +24,7 @@ export const getCachedMatches = unstable_cache(
         home_team:home_team_id ( id, name, code, crest_url ),
         away_team:away_team_id ( id, name, code, crest_url )
       `)
+      .eq("phase", "grupos")
       .order("kickoff_at", { ascending: true })
     return data ?? []
   },
