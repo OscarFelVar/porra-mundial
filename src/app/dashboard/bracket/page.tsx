@@ -66,8 +66,12 @@ export default async function BracketPage({
     .eq("user_id", user!.id)
     .is("pool_id", null)
 
+  // UUID del equipo placeholder "Por definir" (sincronizado con sync/route.ts).
+  const TBD_TEAM_ID = "00000000-0000-0000-0000-000000000001"
+
   // Cuadro ABIERTO (dieciseisavos reales, sin empezar) → rellenable real.
   if (open) {
+    // Pasar los 16 slots (incluidos TBD) para que la cascada sea correcta.
     const matches: R32Match[] = r32Real.map((m, i) => ({
       slot: i,
       home: m.home_team as unknown as Team,
@@ -76,7 +80,7 @@ export default async function BracketPage({
     return (
       <section className="w-full max-w-7xl">
         <Heading />
-        <FillableBracket matches={matches} initialPicks={picks ?? []} />
+        <FillableBracket matches={matches} initialPicks={picks ?? []} tbdTeamId={TBD_TEAM_ID} />
       </section>
     )
   }

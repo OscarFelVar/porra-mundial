@@ -34,6 +34,11 @@ function isAuthorized(request: Request): boolean {
   )
 }
 
+// UUID del equipo placeholder "Por definir" — insertado en Supabase una sola vez.
+// Se usa para LAST_32 cuyos equipos aún no están confirmados, garantizando que los
+// 16 slots del bracket existan desde el principio con posiciones estables.
+const TBD_TEAM_ID = "00000000-0000-0000-0000-000000000001"
+
 // Solo sincroniza partidos (el cron del torneo no necesita re-sincronizar equipos)
 async function syncMatches(teamMap: Record<string, string>) {
   const supabase = createClient(
@@ -59,14 +64,21 @@ async function syncMatches(teamMap: Record<string, string>) {
   const finishedExt = new Set((finishedRows ?? []).map((r) => r.external_id as string))
 
   const rows = fdMatches
-    .filter((m) => teamMap[String(m.homeTeam.id)] && teamMap[String(m.awayTeam.id)])
+    .filter((m) => {
+      const phase = PHASE_MAP[m.stage] ?? "grupos"
+      // LAST_32: incluir siempre — aunque los equipos sean TBD — para que los 16 slots
+      // del bracket existan con posiciones estables desde el inicio de la fase.
+      if (phase === "dieciseisavos") return true
+      // Resto de fases: solo cuando ambos equipos están confirmados.
+      return teamMap[String(m.homeTeam.id)] && teamMap[String(m.awayTeam.id)]
+    })
     .filter((m) => !finishedExt.has(String(m.id))) // no pisar partidos ya finalizados
     .map((m) => ({
       external_id:   String(m.id),
       phase:         PHASE_MAP[m.stage] ?? "grupos",
       group_label:   m.group ? (m.group as string).replace("GROUP_", "") : null,
-      home_team_id:  teamMap[String(m.homeTeam.id)],
-      away_team_id:  teamMap[String(m.awayTeam.id)],
+      home_team_id:  teamMap[String(m.homeTeam.id)] ?? TBD_TEAM_ID,
+      away_team_id:  teamMap[String(m.awayTeam.id)] ?? TBD_TEAM_ID,
       kickoff_at:    m.utcDate as string,
       status:        STATUS_MAP[m.status] ?? "scheduled",
       home_score_90: (m.score?.fullTime?.home ?? null) as number | null,

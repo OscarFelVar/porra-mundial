@@ -22,10 +22,12 @@ export function FillableBracket({
   matches,
   initialPicks,
   demo = false,
+  tbdTeamId,
 }: {
   matches: R32Match[]
   initialPicks: { round: string; slot: number; predicted_team_id: string }[]
   demo?: boolean
+  tbdTeamId?: string
 }) {
   const teamMap = useMemo(() => {
     const m = new Map<string, Team>()
@@ -53,12 +55,19 @@ export function FillableBracket({
   const [saved, setSaved] = useState(false)
   const [isSaving, startSave] = useTransition()
 
+  // Un equipo es "real" si existe y no es el placeholder TBD.
+  const isReal = (team: Team | null | undefined): team is Team =>
+    !!team && team.id !== tbdTeamId
+
   // Candidatos de una llave: en 16avos vienen del partido real; en rondas
   // posteriores son los ganadores elegidos en las dos llaves que alimentan.
+  // Los equipos TBD (placeholder) se tratan como null: no se pueden elegir.
   function candidates(roundIndex: number, slot: number, p: Record<string, string>): (Team | null)[] {
     if (roundIndex === 0) {
       const m = matchBySlot.get(slot)
-      return [m?.home ?? null, m?.away ?? null]
+      const home = m?.home ?? null
+      const away = m?.away ?? null
+      return [isReal(home) ? home : null, isReal(away) ? away : null]
     }
     const prev = ROUNDS[roundIndex - 1].key
     const a = p[`${prev}:${slot * 2}`]
