@@ -42,13 +42,19 @@ export default async function BracketPage({
     .from("matches")
     .select(`
       id, phase, kickoff_at, status, home_score_90, away_score_90, advancing_team_id,
+      external_id,
       home_team:home_team_id ( id, name, code, crest_url ),
       away_team:away_team_id ( id, name, code, crest_url )
     `)
     .neq("phase", "grupos")
     .order("kickoff_at", { ascending: true })
 
-  const r32Real = (koMatches ?? []).filter((m) => m.phase === "dieciseisavos")
+  // Ordenar dieciseisavos por external_id numérico (asignado por football-data.org
+  // al crear el fixture, es estable aunque los equipos se confirmen después).
+  // Evita que slots se desplacen cuando se van publicando nuevos cruces.
+  const r32Real = (koMatches ?? [])
+    .filter((m) => m.phase === "dieciseisavos")
+    .sort((a, b) => parseInt(a.external_id ?? "0") - parseInt(b.external_id ?? "0"))
   const firstKickoff = r32Real.length
     ? Math.min(...r32Real.map((m) => new Date(m.kickoff_at).getTime()))
     : null
