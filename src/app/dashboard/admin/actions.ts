@@ -2,11 +2,13 @@
 
 import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { sendTestEmail } from "@/lib/email/digests"
 
-// Verifica que quien llama es admin. RLS es la barrera real (todas las
-// escrituras a matches/app_settings exigen is_admin()); esto solo da un
-// mensaje claro en vez del silencio de una fila no afectada.
+// Verifica que quien llama es admin (con el cliente de usuario, con sesión real),
+// luego devuelve un cliente service_role para las escrituras — así los UPDATEs
+// bypasan la RLS en lugar de depender de que cada política esté perfectamente
+// configurada. La barrera de seguridad es el check explícito de is_admin().
 async function assertAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,7 +19,10 @@ async function assertAdmin() {
     .eq("id", user.id)
     .single()
   if (!profile?.is_admin) throw new Error("Solo el administrador puede hacer esto")
-  return supabase
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 }
 
 // --- Especiales: resultados reales (dispara el recálculo de puntos) ---
