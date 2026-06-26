@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { Users } from "lucide-react"
 import Link from "next/link"
 
@@ -14,8 +14,8 @@ export function BracketTabs({
   myPicks,
   hasPicks,
 }: {
-  real: React.ReactNode
-  myPicks: React.ReactNode
+  real: ReactNode
+  myPicks: ReactNode
   hasPicks: boolean
 }) {
   const [tab, setTab] = useState<"real" | "picks">("real")

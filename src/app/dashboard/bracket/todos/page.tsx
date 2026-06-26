@@ -159,11 +159,11 @@ export default async function BracketTodosPage() {
               {/* Cabecera */}
               <div className="flex items-center gap-3 px-5 py-4">
                 <Avatar src={profile.avatar_url} name={profile.display_name} size={32} />
-                <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
                   <span className="truncate text-sm font-medium text-white">
                     {profile.display_name ?? "Anónimo"}
                   </span>
-                  {isMe && <span className="ml-1.5 text-xs text-white/40">(tú)</span>}
+                  {isMe && <span className="shrink-0 text-xs text-white/40">(tú)</span>}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {champTeam && (
