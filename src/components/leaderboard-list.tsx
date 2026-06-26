@@ -11,6 +11,7 @@ export type LeaderboardRow = {
   avatar_url: string | null
   total_points: number
   pred_count: number
+  exact_count: number
 }
 
 const medalColor: Record<number, string> = {
@@ -87,8 +88,13 @@ export function LeaderboardList({
             </div>
 
             {/* Stats */}
-            <div className="relative z-10 flex items-center gap-4 text-right text-sm">
+            <div className="relative z-10 flex items-center gap-3 text-right text-sm">
               <span className="hidden text-white/40 sm:inline">{row.pred_count} pronós.</span>
+              {row.exact_count > 0 && (
+                <span className="flex items-center gap-0.5 text-xs font-semibold text-amber-300/80">
+                  🎯{row.exact_count}
+                </span>
+              )}
               <span className="min-w-[3rem] font-[family-name:var(--font-display)] text-xl text-white">
                 {row.total_points}
                 <span className="ml-0.5 font-sans text-xs text-white/40">pts</span>

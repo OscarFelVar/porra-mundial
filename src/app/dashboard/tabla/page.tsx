@@ -47,6 +47,7 @@ export default async function TablaPage({
     avatar_url:   r.avatar_url as string | null,
     total_points: Number(r.total_points),
     pred_count:   Number(r.pred_count),
+    exact_count:  Number(r.exact_count ?? 0),
   }))
 
   return (
