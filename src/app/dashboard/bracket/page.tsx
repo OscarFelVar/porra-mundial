@@ -32,10 +32,11 @@ function Heading() {
 export default async function BracketPage({
   searchParams,
 }: {
-  searchParams: Promise<{ demo?: string }>
+  searchParams: Promise<{ demo?: string; preview?: string }>
 }) {
-  const { demo } = await searchParams
+  const { demo, preview } = await searchParams
   const isDemo = demo != null
+  const forceClose = preview === "closed"
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -71,7 +72,7 @@ export default async function BracketPage({
   const TBD_TEAM_ID = "00000000-0000-0000-0000-000000000001"
 
   // Cuadro ABIERTO → rellenable real.
-  if (open) {
+  if (open && !forceClose) {
     const matches: R32Match[] = r32Real.map((m, i) => ({
       slot: i,
       home: m.home_team as unknown as Team,
