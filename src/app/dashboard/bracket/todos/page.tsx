@@ -5,12 +5,41 @@ import { Crown } from "lucide-react"
 import Link from "next/link"
 
 type Team = { id: string; name: string; crest_url: string | null }
+type BPRow = {
+  user_id: string
+  round: string
+  slot: number
+  predicted_team_id: string
+  points_awarded: number | null
+}
+
+const TBD_ID = "00000000-0000-0000-0000-000000000001"
+
+const ROUNDS = [
+  { key: "final",         label: "Campeón 🏆",   slots: 1 },
+  { key: "tercer_puesto", label: "3.er puesto",   slots: 1 },
+  { key: "semifinal",     label: "Semifinales",   slots: 2 },
+  { key: "cuartos",       label: "Cuartos",       slots: 4 },
+  { key: "octavos",       label: "Octavos",       slots: 8 },
+  { key: "dieciseisavos", label: "16avos",        slots: 16 },
+]
+
+function TeamChip({ team }: { team: Team }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] text-white/70">
+      {team.crest_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={team.crest_url} alt="" width={12} height={12} className="h-3 w-3 shrink-0 object-contain" />
+      )}
+      {team.name}
+    </span>
+  )
+}
 
 export default async function BracketTodosPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Solo mostrar cuando el bracket ya cerró (1er partido de dieciseisavos empezó)
   const { data: r32 } = await supabase
     .from("matches")
     .select("kickoff_at")
@@ -43,7 +72,6 @@ export default async function BracketTodosPage() {
     )
   }
 
-  // Pools del usuario para buscar compañeros
   const { data: memberRows } = await supabase
     .from("pool_members")
     .select("pool_id")
@@ -58,7 +86,6 @@ export default async function BracketTodosPage() {
     )
   }
 
-  // Compañeros de mis grupos (deduplicados)
   const { data: companions } = await supabase
     .from("pool_members")
     .select("user_id, profile:profiles!inner ( display_name, avatar_url )")
@@ -70,35 +97,33 @@ export default async function BracketTodosPage() {
   }
   const userIds = [...usersMap.keys()]
 
-  // Equipos para nombres y escudos
   const { data: teamsRaw } = await supabase.from("teams").select("id, name, crest_url")
   const teamMap = new Map<string, Team>(
     (teamsRaw ?? []).map((t) => [t.id as string, t as Team])
   )
 
-  // Picks de bracket de todos los compañeros
   const { data: bpRaw } = await supabase
     .from("bracket_predictions")
     .select("user_id, round, slot, predicted_team_id, points_awarded")
     .is("pool_id", null)
     .in("user_id", userIds)
 
-  type BPRow = { user_id: string; round: string; slot: number; predicted_team_id: string; points_awarded: number | null }
   const byUser = new Map<string, BPRow[]>()
   for (const p of (bpRaw ?? []) as BPRow[]) {
     if (!byUser.has(p.user_id)) byUser.set(p.user_id, [])
     byUser.get(p.user_id)!.push(p)
   }
 
-  // Ordenar: primero el usuario actual, luego por bracket_pts desc
-  const rows = [...usersMap.entries()]
+  const participants = [...usersMap.entries()]
     .map(([uid, profile]) => {
-      const userPicks = byUser.get(uid) ?? []
-      const champion = userPicks.find((p) => p.round === "final" && p.slot === 0)
-      const semis = userPicks.filter((p) => p.round === "semifinal").map((p) => teamMap.get(p.predicted_team_id))
-      const bracketPts = userPicks.reduce((s, p) => s + (p.points_awarded ?? 0), 0)
-      const filledCount = userPicks.length
-      return { uid, profile, champion, semis, bracketPts, filledCount }
+      const picks = byUser.get(uid) ?? []
+      const pickMap = new Map(picks.map((p) => [`${p.round}:${p.slot}`, p]))
+      const champPick = pickMap.get("final:0")
+      const champTeam = champPick && champPick.predicted_team_id !== TBD_ID
+        ? teamMap.get(champPick.predicted_team_id)
+        : undefined
+      const bracketPts = picks.reduce((s, p) => s + (p.points_awarded ?? 0), 0)
+      return { uid, profile, picks, pickMap, champTeam, bracketPts }
     })
     .sort((a, b) => {
       if (a.uid === user!.id) return -1
@@ -106,7 +131,7 @@ export default async function BracketTodosPage() {
       return b.bracketPts - a.bracketPts
     })
 
-  const TBD_TEAM_ID = "00000000-0000-0000-0000-000000000001"
+  const filledCount = participants.filter((p) => p.picks.length > 0).length
 
   return (
     <section className="w-full max-w-2xl">
@@ -117,64 +142,75 @@ export default async function BracketTodosPage() {
           </span>
         </h2>
       </Reveal>
-      <p className="mb-6 text-sm text-white/40">{rows.filter((r) => r.filledCount > 0).length} participantes rellenaron el cuadro</p>
+      <p className="mb-6 text-sm text-white/40">{filledCount} participantes rellenaron el cuadro</p>
 
-      <ul className="grid gap-3">
-        {rows.map(({ uid, profile, champion, semis, bracketPts, filledCount }) => {
+      <ul className="grid gap-4">
+        {participants.map(({ uid, profile, picks, pickMap, champTeam, bracketPts }) => {
           const isMe = uid === user!.id
-          const champTeam = champion ? teamMap.get(champion.predicted_team_id) : null
-          const hasValidChamp = champTeam && champTeam.id !== TBD_TEAM_ID
+          const noPicks = picks.length === 0
 
           return (
             <li
               key={uid}
-              className={`rounded-2xl border px-5 py-4 backdrop-blur ${
+              className={`rounded-2xl border backdrop-blur ${
                 isMe ? "border-white/20 bg-white/10" : "border-white/10 bg-white/5"
               }`}
             >
-              <div className="flex items-center gap-3">
+              {/* Cabecera */}
+              <div className="flex items-center gap-3 px-5 py-4">
                 <Avatar src={profile.avatar_url} name={profile.display_name} size={32} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="truncate text-sm font-medium text-white">
-                      {profile.display_name ?? "Anónimo"}
-                    </span>
-                    {isMe && <span className="text-xs text-white/40">(tú)</span>}
-                  </div>
-                  {filledCount === 0 ? (
-                    <span className="text-xs text-white/30">No rellenó el cuadro</span>
-                  ) : semis.length > 0 ? (
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {semis.map((t, i) => t && t.id !== TBD_TEAM_ID && (
-                        <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] text-white/60">
-                          {t.crest_url && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={t.crest_url} alt="" width={12} height={12} className="h-3 w-3 object-contain" />
-                          )}
-                          {t.name}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
+                  <span className="truncate text-sm font-medium text-white">
+                    {profile.display_name ?? "Anónimo"}
+                  </span>
+                  {isMe && <span className="ml-1.5 text-xs text-white/40">(tú)</span>}
                 </div>
-
-                <div className="flex flex-col items-end gap-1">
-                  {hasValidChamp && (
-                    <div className="flex items-center gap-1.5 rounded-lg bg-yellow-400/10 px-2 py-1">
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {champTeam && (
+                    <div className="flex items-center gap-1.5 rounded-lg bg-yellow-400/10 px-2 py-0.5">
                       <Crown size={11} className="text-yellow-400" />
-                      <span className="text-xs font-semibold text-yellow-300">
-                        {champTeam!.name}
-                      </span>
+                      <span className="text-xs font-semibold text-yellow-300">{champTeam.name}</span>
                     </div>
                   )}
                   {bracketPts > 0 && (
-                    <span className="font-[family-name:var(--font-display)] text-lg text-emerald-300">
+                    <span className="font-[family-name:var(--font-display)] text-base text-emerald-300">
                       +{bracketPts}
                       <span className="ml-0.5 font-sans text-[10px] text-white/40">pts</span>
                     </span>
                   )}
                 </div>
               </div>
+
+              {/* Picks por ronda */}
+              {noPicks ? (
+                <p className="border-t border-white/5 px-5 py-3 text-xs text-white/30">No rellenó el cuadro</p>
+              ) : (
+                <div className="border-t border-white/5 px-5 py-4">
+                  <dl className="grid gap-2.5">
+                    {ROUNDS.map((round) => {
+                      const teams: Team[] = []
+                      for (let s = 0; s < round.slots; s++) {
+                        const p = pickMap.get(`${round.key}:${s}`)
+                        if (p && p.predicted_team_id !== TBD_ID) {
+                          const t = teamMap.get(p.predicted_team_id)
+                          if (t) teams.push(t)
+                        }
+                      }
+                      if (teams.length === 0) return null
+                      return (
+                        <div key={round.key} className="flex flex-col gap-1 sm:flex-row sm:items-start sm:gap-3">
+                          <dt className="w-24 shrink-0 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-white/35">
+                            {round.label}
+                          </dt>
+                          <dd className="flex flex-wrap gap-1">
+                            {teams.map((t) => <TeamChip key={t.id} team={t} />)}
+                          </dd>
+                        </div>
+                      )
+                    })}
+                  </dl>
+                </div>
+              )}
             </li>
           )
         })}
