@@ -59,6 +59,7 @@ export async function saveMatchResult(
   awayScore: number | null,
   status: "scheduled" | "live" | "finished",
 ) {
+  if (!matchId) throw new Error(`saveMatchResult: matchId inválido (recibido: ${JSON.stringify(matchId)})`)
   const supabase = await assertAdmin()
   const { error } = await supabase
     .from("matches")
@@ -96,6 +97,7 @@ export async function saveDigestPool(poolId: string | null) {
 
 // --- Knockouts: quién avanza (dispara recálculo del cuadro) ---
 export async function saveAdvancing(matchId: string, teamId: string | null) {
+  if (!matchId) throw new Error(`saveAdvancing: matchId inválido (recibido: ${JSON.stringify(matchId)})`)
   const supabase = await assertAdmin()
   const { error } = await supabase
     .from("matches")
