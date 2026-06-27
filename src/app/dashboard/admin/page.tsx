@@ -20,7 +20,7 @@ export default async function AdminPage() {
     .single()
   if (!profile?.is_admin) redirect("/dashboard")
 
-  const [{ data: settings }, players, { data: matchesData }, { data: poolsData }] = await Promise.all([
+  const [{ data: settings }, players, { data: matchesData }, { data: poolsData }, { data: teamsData }] = await Promise.all([
     supabase
       .from("app_settings")
       .select("special_bets_deadline, result_top_scorer, result_mvp, result_best_goalkeeper, digest_pool_id")
@@ -40,11 +40,22 @@ export default async function AdminPage() {
       .from("pools")
       .select("id, name")
       .order("created_at", { ascending: true }),
+    supabase
+      .from("teams")
+      .select("id, name, code")
+      .neq("id", "00000000-0000-0000-0000-000000000001")
+      .order("name", { ascending: true }),
   ])
 
   const pools: PoolOption[] = (poolsData ?? []).map((p) => ({
     id:   p.id as string,
     name: p.name as string,
+  }))
+
+  const allTeams = (teamsData ?? []).map((t) => ({
+    id:   t.id as string,
+    name: t.name as string,
+    code: (t.code ?? null) as string | null,
   }))
 
   const matches: AdminMatch[] = (matchesData ?? []).map((m) => {
@@ -88,7 +99,7 @@ export default async function AdminPage() {
             best_goalkeeper: settings?.result_best_goalkeeper ?? null,
           }}
         />
-        <AdminMatches matches={matches} />
+        <AdminMatches matches={matches} allTeams={allTeams} />
         <AdminDigest pools={pools} current={settings?.digest_pool_id ?? null} />
       </div>
     </section>

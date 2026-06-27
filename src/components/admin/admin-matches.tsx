@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react"
 import { Check, Loader2 } from "lucide-react"
-import { saveMatchResult, saveAdvancing } from "@/app/dashboard/admin/actions"
+import { saveMatchResult, saveAdvancing, saveMatchTeams } from "@/app/dashboard/admin/actions"
 import { LocalTime } from "@/components/local-time"
 
 const MATCH_FMT: Intl.DateTimeFormatOptions = {
@@ -10,6 +10,9 @@ const MATCH_FMT: Intl.DateTimeFormatOptions = {
 }
 
 type Team = { id: string; name: string; code: string | null } | null
+type TeamOption = { id: string; name: string; code: string | null }
+
+const TBD_ID = "00000000-0000-0000-0000-000000000001"
 
 export type AdminMatch = {
   id: string
@@ -34,7 +37,7 @@ const PHASES: { key: string; label: string }[] = [
   { key: "final",         label: "Final" },
 ]
 
-export function AdminMatches({ matches }: { matches: AdminMatch[] }) {
+export function AdminMatches({ matches, allTeams }: { matches: AdminMatch[]; allTeams: TeamOption[] }) {
   // Solo fases que tienen partidos cargados.
   const available = PHASES.filter((p) => matches.some((m) => m.phase === p.key))
   const [phase, setPhase] = useState(available[0]?.key ?? "grupos")
@@ -77,7 +80,7 @@ export function AdminMatches({ matches }: { matches: AdminMatch[] }) {
       ) : (
         <div className="grid gap-3">
           {visible.map((m) => (
-            <MatchRow key={m.id} match={m} knockout={m.phase !== "grupos"} />
+            <MatchRow key={m.id} match={m} knockout={m.phase !== "grupos"} allTeams={allTeams} />
           ))}
         </div>
       )}
@@ -85,21 +88,27 @@ export function AdminMatches({ matches }: { matches: AdminMatch[] }) {
   )
 }
 
-function MatchRow({ match, knockout }: { match: AdminMatch; knockout: boolean }) {
+function MatchRow({ match, knockout, allTeams }: { match: AdminMatch; knockout: boolean; allTeams: TeamOption[] }) {
   const [home, setHome] = useState(match.homeScore?.toString() ?? "")
   const [away, setAway] = useState(match.awayScore?.toString() ?? "")
   const [status, setStatus] = useState(match.status)
   const [advancing, setAdvancing] = useState<string | null>(match.advancingTeamId)
+  const [homeTeamId, setHomeTeamId] = useState(match.home?.id ?? "")
+  const [awayTeamId, setAwayTeamId] = useState(match.away?.id ?? "")
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPending, start] = useTransition()
+
+  const isDieciseisavos = match.phase === "dieciseisavos"
+  const hasTbd = isDieciseisavos && (match.home?.id === TBD_ID || match.away?.id === TBD_ID)
 
   const scoreOrStatusDirty =
     home !== (match.homeScore?.toString() ?? "") ||
     away !== (match.awayScore?.toString() ?? "") ||
     status !== match.status
   const advDirty = advancing !== match.advancingTeamId
-  const dirty = scoreOrStatusDirty || advDirty
+  const teamsDirty = hasTbd && (homeTeamId !== (match.home?.id ?? "") || awayTeamId !== (match.away?.id ?? ""))
+  const dirty = scoreOrStatusDirty || advDirty || teamsDirty
 
   function handleSave() {
     setError(null)
@@ -112,6 +121,9 @@ function MatchRow({ match, knockout }: { match: AdminMatch; knockout: boolean })
         }
         if (advDirty) {
           await saveAdvancing(match.id, advancing)
+        }
+        if (teamsDirty) {
+          await saveMatchTeams(match.id, homeTeamId, awayTeamId)
         }
         setSaved(true)
       } catch (e) {
@@ -128,9 +140,23 @@ function MatchRow({ match, knockout }: { match: AdminMatch; knockout: boolean })
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="flex-1 truncate text-right text-sm text-white/90">
-          {match.home?.name ?? "—"}
-        </span>
+        {hasTbd && match.home?.id === TBD_ID ? (
+          <select
+            value={homeTeamId}
+            onChange={(e) => { setHomeTeamId(e.target.value); setSaved(false) }}
+            className="flex-1 rounded-lg border border-amber-400/40 bg-white/5 px-2 py-1.5 text-right text-xs text-white outline-none focus:border-amber-400/70 [color-scheme:dark]"
+            title="Equipo local"
+          >
+            <option value={TBD_ID}>Por definir</option>
+            {allTeams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="flex-1 truncate text-right text-sm text-white/90">
+            {match.home?.name ?? "—"}
+          </span>
+        )}
         <input
           type="number"
           min={0}
@@ -146,9 +172,23 @@ function MatchRow({ match, knockout }: { match: AdminMatch; knockout: boolean })
           onChange={(e) => { setAway(e.target.value); setSaved(false) }}
           className="w-12 rounded-lg border border-white/10 bg-white/5 py-1.5 text-center text-sm text-white outline-none focus:border-emerald-400/50"
         />
-        <span className="flex-1 truncate text-left text-sm text-white/90">
-          {match.away?.name ?? "—"}
-        </span>
+        {hasTbd && match.away?.id === TBD_ID ? (
+          <select
+            value={awayTeamId}
+            onChange={(e) => { setAwayTeamId(e.target.value); setSaved(false) }}
+            className="flex-1 rounded-lg border border-amber-400/40 bg-white/5 px-2 py-1.5 text-left text-xs text-white outline-none focus:border-amber-400/70 [color-scheme:dark]"
+            title="Equipo visitante"
+          >
+            <option value={TBD_ID}>Por definir</option>
+            {allTeams.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        ) : (
+          <span className="flex-1 truncate text-left text-sm text-white/90">
+            {match.away?.name ?? "—"}
+          </span>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

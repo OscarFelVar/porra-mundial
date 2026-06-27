@@ -94,6 +94,24 @@ export async function saveDigestPool(poolId: string | null) {
   revalidatePath("/dashboard/admin")
 }
 
+// --- Dieciseisavos: asignar equipos manualmente cuando la API aún devuelve TBD ---
+export async function saveMatchTeams(
+  matchId: string,
+  homeTeamId: string,
+  awayTeamId: string,
+) {
+  if (!matchId) throw new Error(`saveMatchTeams: matchId inválido (recibido: ${JSON.stringify(matchId)})`)
+  const supabase = await assertAdmin()
+  const { error } = await supabase
+    .from("matches")
+    .update({ home_team_id: homeTeamId, away_team_id: awayTeamId })
+    .eq("id", matchId)
+  if (error) throw new Error(error.message)
+  revalidateTag("matches", "default")
+  revalidatePath("/dashboard/admin")
+  revalidatePath("/dashboard/bracket")
+}
+
 // --- Knockouts: quién avanza (dispara recálculo del cuadro) ---
 export async function saveAdvancing(matchId: string, teamId: string | null) {
   if (!matchId) throw new Error(`saveAdvancing: matchId inválido (recibido: ${JSON.stringify(matchId)})`)
