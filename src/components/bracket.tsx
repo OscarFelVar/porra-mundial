@@ -17,6 +17,7 @@ export type BracketMatch = {
 }
 
 function fmtKickoff(iso: string): string {
+  if (!iso) return "Por confirmar"
   const d = new Date(iso)
   const date = new Intl.DateTimeFormat("es-ES", {
     day: "numeric", month: "short", timeZone: "Europe/Madrid",
