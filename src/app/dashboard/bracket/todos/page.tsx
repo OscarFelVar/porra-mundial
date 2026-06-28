@@ -102,11 +102,18 @@ export default async function BracketTodosPage() {
     (teamsRaw ?? []).map((t) => [t.id as string, t as Team])
   )
 
-  const { data: bpRaw } = await supabase
-    .from("bracket_predictions")
-    .select("user_id, round, slot, predicted_team_id, points_awarded")
-    .is("pool_id", null)
-    .in("user_id", userIds)
+  const bpRaw: BPRow[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data: page } = await supabase
+      .from("bracket_predictions")
+      .select("user_id, round, slot, predicted_team_id, points_awarded")
+      .is("pool_id", null)
+      .in("user_id", userIds)
+      .range(from, from + 999)
+    const rows = (page ?? []) as BPRow[]
+    bpRaw.push(...rows)
+    if (rows.length < 1000) break
+  }
 
   const byUser = new Map<string, BPRow[]>()
   for (const p of (bpRaw ?? []) as BPRow[]) {

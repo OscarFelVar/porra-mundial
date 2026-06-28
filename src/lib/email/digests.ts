@@ -182,15 +182,22 @@ export async function dispatchDigests(): Promise<{ sent: Sent[]; skipped?: strin
       .limit(1)
     const first = r32 && r32.length ? new Date(r32[0].kickoff_at as string).getTime() : null
     if (first != null && nowMs >= first - LOCK_MS) {
-      const { data: bp } = await supabase
-        .from("bracket_predictions")
-        .select("user_id, round, slot, predicted_team_id")
-        .is("pool_id", null)
-        .in("user_id", memberIds)
+      const bpAll: { user_id: string; round: string; slot: number; predicted_team_id: string }[] = []
+      for (let from = 0; ; from += 1000) {
+        const { data: page } = await supabase
+          .from("bracket_predictions")
+          .select("user_id, round, slot, predicted_team_id")
+          .is("pool_id", null)
+          .in("user_id", memberIds)
+          .range(from, from + 999)
+        const rows = page ?? []
+        bpAll.push(...rows as typeof bpAll)
+        if (rows.length < 1000) break
+      }
       const { data: teams } = await supabase.from("teams").select("id, name")
       const teamName = Object.fromEntries((teams ?? []).map((t) => [t.id as string, t.name as string]))
-      const byUser = new Map<string, typeof bp>()
-      for (const p of bp ?? []) {
+      const byUser = new Map<string, typeof bpAll>()
+      for (const p of bpAll) {
         if (!byUser.has(p.user_id)) byUser.set(p.user_id, [])
         byUser.get(p.user_id)!.push(p)
       }
