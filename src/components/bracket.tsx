@@ -14,6 +14,7 @@ export type BracketMatch = {
   advancing_team_id: string | null
   home_team: Team | null
   away_team: Team | null
+  external_id?: string | null
 }
 
 function fmtKickoff(iso: string): string {

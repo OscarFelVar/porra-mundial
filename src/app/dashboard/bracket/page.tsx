@@ -157,6 +157,7 @@ export default async function BracketPage({
     home_score:        m.home_score_90,
     away_score:        m.away_score_90,
     advancing_team_id: m.advancing_team_id,
+    external_id:       m.external_id,
     home_team:         m.home_team as unknown as BracketMatch["home_team"],
     away_team:         m.away_team as unknown as BracketMatch["away_team"],
   }))
@@ -171,13 +172,30 @@ export default async function BracketPage({
   }
   const teams = [...teamsMap.values()]
 
+  // Mapa round:slot → partido para mostrar la llave completa en "Mis picks"
+  type MatchSide = { home_team: BracketMatch["home_team"]; away_team: BracketMatch["away_team"] }
+  const matchBySlot = new Map<string, MatchSide>()
+  const phaseOrders: { phase: string; sorter: (a: BracketMatch, b: BracketMatch) => number }[] = [
+    { phase: "dieciseisavos", sorter: (a, b) => parseInt(a.external_id ?? "0") - parseInt(b.external_id ?? "0") },
+    { phase: "octavos",       sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
+    { phase: "cuartos",       sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
+    { phase: "semifinal",     sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
+    { phase: "final",         sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
+    { phase: "tercer_puesto", sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
+  ]
+  for (const { phase, sorter } of phaseOrders) {
+    knockout.filter((m) => m.phase === phase).sort(sorter).forEach((m, i) => {
+      matchBySlot.set(`${phase}:${i}`, { home_team: m.home_team, away_team: m.away_team })
+    })
+  }
+
   return (
     <section className="w-full max-w-7xl">
       <Heading />
       <BracketTabs
         hasPicks={picks.length > 0}
         real={<Bracket matches={knockout} />}
-        myPicks={<BracketMyPicks picks={picks} teams={teams} />}
+        myPicks={<BracketMyPicks picks={picks} teams={teams} matchBySlot={matchBySlot} />}
       />
     </section>
   )
