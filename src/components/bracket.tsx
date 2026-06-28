@@ -16,6 +16,17 @@ export type BracketMatch = {
   away_team: Team | null
 }
 
+function fmtKickoff(iso: string): string {
+  const d = new Date(iso)
+  const date = new Intl.DateTimeFormat("es-ES", {
+    day: "numeric", month: "short", timeZone: "Europe/Madrid",
+  }).format(d)
+  const time = new Intl.DateTimeFormat("es-ES", {
+    hour: "2-digit", minute: "2-digit", timeZone: "Europe/Madrid",
+  }).format(d)
+  return `${date} · ${time}`
+}
+
 // Orden de rondas (tercer_puesto se muestra junto a la final)
 const ROUNDS: { key: string; label: string }[] = [
   { key: "dieciseisavos", label: "Dieciseisavos" },
@@ -86,6 +97,9 @@ function MatchNode({ match, dim = false }: { match: BracketMatch; dim?: boolean 
           : "border-white/10 bg-white/5"
       }`}
     >
+      <div className="border-b border-white/5 px-3 py-1 text-[10px] text-white/30">
+        {fmtKickoff(match.kickoff_at)}
+      </div>
       <TeamRow team={match.home_team} score={match.home_score} isWinner={w === match.home_team?.id} decided={decided} />
       <div className="h-px bg-white/10" />
       <TeamRow team={match.away_team} score={match.away_score} isWinner={w === match.away_team?.id} decided={decided} />
