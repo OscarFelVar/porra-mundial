@@ -28,13 +28,14 @@ function fmtKickoff(iso: string): string {
 }
 
 // Orden de rondas (tercer_puesto se muestra junto a la final)
-const ROUNDS: { key: string; label: string }[] = [
-  { key: "dieciseisavos", label: "Dieciseisavos" },
-  { key: "octavos",       label: "Octavos" },
-  { key: "cuartos",       label: "Cuartos" },
-  { key: "semifinal",     label: "Semifinal" },
-  { key: "final",         label: "Final" },
+const ROUNDS: { key: string; label: string; slots: number }[] = [
+  { key: "dieciseisavos", label: "Dieciseisavos", slots: 16 },
+  { key: "octavos",       label: "Octavos",       slots: 8  },
+  { key: "cuartos",       label: "Cuartos",       slots: 4  },
+  { key: "semifinal",     label: "Semifinal",     slots: 2  },
+  { key: "final",         label: "Final",         slots: 1  },
 ]
+const THIRD_PLACE_SLOTS = 1
 
 function winnerId(m: BracketMatch): string | null {
   if (m.advancing_team_id) return m.advancing_team_id
@@ -135,13 +136,30 @@ function RoundColumn({
   )
 }
 
+function makePlaceholders(phase: string, count: number): BracketMatch[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `tbd-${phase}-${i}`,
+    phase,
+    kickoff_at: "",
+    status: "scheduled",
+    home_score: null,
+    away_score: null,
+    advancing_team_id: null,
+    home_team: null,
+    away_team: null,
+  }))
+}
+
 export function Bracket({ matches }: { matches: BracketMatch[] }) {
-  const byPhase = (phase: string) =>
-    matches
+  const byPhase = (phase: string, needed: number): BracketMatch[] => {
+    const real = matches
       .filter((m) => m.phase === phase)
       .sort((a, b) => a.kickoff_at.localeCompare(b.kickoff_at))
+    const missing = needed - real.length
+    return missing > 0 ? [...real, ...makePlaceholders(phase, missing)] : real
+  }
 
-  const thirdPlace = byPhase("tercer_puesto")
+  const thirdPlace = byPhase("tercer_puesto", THIRD_PLACE_SLOTS)
   const hasAny = matches.length > 0
 
   if (!hasAny) {
@@ -154,18 +172,14 @@ export function Bracket({ matches }: { matches: BracketMatch[] }) {
     )
   }
 
-  // Solo mostramos las rondas que ya tienen partidos (se llenan progresivamente)
-  const activeRounds = ROUNDS.filter((r) => byPhase(r.key).length > 0)
-
   return (
     <div className="-mx-6 overflow-x-auto px-6 pb-4">
       <div className="flex min-w-max items-stretch gap-3">
-        {activeRounds.map((r, i) => (
-          <RoundColumn key={r.key} label={r.label} matches={byPhase(r.key)} index={i} />
+        {ROUNDS.map((r, i) => (
+          <RoundColumn key={r.key} label={r.label} matches={byPhase(r.key, r.slots)} index={i} />
         ))}
 
-        {thirdPlace.length > 0 && (
-          <div className="flex w-[12rem] shrink-0 flex-col justify-end">
+        <div className="flex w-[12rem] shrink-0 flex-col justify-end">
             <h3 className="mb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-amber-300/50">
               3.er puesto
             </h3>
@@ -173,7 +187,6 @@ export function Bracket({ matches }: { matches: BracketMatch[] }) {
               <MatchNode key={m.id} match={m} dim />
             ))}
           </div>
-        )}
       </div>
     </div>
   )

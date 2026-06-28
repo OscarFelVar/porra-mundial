@@ -2,7 +2,8 @@
 
 import { revalidatePath, revalidateTag } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { sendTestEmail } from "@/lib/email/digests"
+import { createClient as createServiceClient } from "@supabase/supabase-js"
+import { sendTestEmail, dispatchDigests } from "@/lib/email/digests"
 
 // Verifica que quien llama es admin. RLS es la segunda barrera de seguridad;
 // este check da un mensaje claro en caso de acceso no autorizado.
@@ -110,6 +111,24 @@ export async function saveMatchTeams(
   revalidateTag("matches", "default")
   revalidatePath("/dashboard/admin")
   revalidatePath("/dashboard/bracket")
+}
+
+// --- Email bracket: borrar log y reenviar con datos correctos ---
+export async function resendBracketEmail(): Promise<{ ok: boolean; error?: string }> {
+  await assertAdmin()
+  const service = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
+  await service.from("email_log").delete().eq("kind", "bracket").eq("ref", "main")
+  try {
+    const result = await dispatchDigests()
+    const sent = result.sent.find((s) => s.kind === "bracket")
+    if (sent) return { ok: true }
+    return { ok: false, error: result.skipped ?? "El email no se envió (revisa configuración)" }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
 }
 
 // --- Knockouts: quién avanza (dispara recálculo del cuadro) ---

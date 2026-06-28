@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { Check, Loader2, Mail, Send } from "lucide-react"
-import { saveDigestPool, sendTestDigestEmail } from "@/app/dashboard/admin/actions"
+import { saveDigestPool, sendTestDigestEmail, resendBracketEmail } from "@/app/dashboard/admin/actions"
 
 export type PoolOption = { id: string; name: string }
 
@@ -24,6 +24,11 @@ export function AdminDigest({
   const [testErr, setTestErr] = useState<string | null>(null)
   const [testPending, startTest] = useTransition()
 
+  // Reenvío email bracket
+  const [resendMsg, setResendMsg] = useState<string | null>(null)
+  const [resendErr, setResendErr] = useState<string | null>(null)
+  const [resendPending, startResend] = useTransition()
+
   function handleSave() {
     setError(null)
     start(async () => {
@@ -32,6 +37,20 @@ export function AdminDigest({
         setSaved(true)
       } catch (e) {
         setError((e as Error).message)
+      }
+    })
+  }
+
+  function handleResend() {
+    setResendErr(null)
+    setResendMsg(null)
+    startResend(async () => {
+      try {
+        const res = await resendBracketEmail()
+        if (res.ok) setResendMsg("Email del cuadro reenviado a todos los participantes.")
+        else setResendErr(res.error ?? "Error desconocido")
+      } catch (e) {
+        setResendErr((e as Error).message)
       }
     })
   }
@@ -114,6 +133,23 @@ export function AdminDigest({
         <span className="w-full text-[11px] text-white/30">
           «Probar Brevo» manda un correo de prueba a tu propio correo vía Brevo para verificar al
           instante que el envío funciona (API key + remitente + entrega), sin tocar plazos ni avisar a nadie.
+        </span>
+      </div>
+
+      {/* Reenvío email bracket */}
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
+        <button
+          onClick={handleResend}
+          disabled={resendPending}
+          className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs font-semibold text-amber-200/80 transition hover:bg-amber-400/10 disabled:opacity-40"
+        >
+          {resendPending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+          {resendPending ? "Enviando…" : "Reenviar email cuadro eliminatorias"}
+        </button>
+        {resendMsg && <span className="text-xs text-emerald-400">{resendMsg}</span>}
+        {resendErr && <span className="max-w-[18rem] truncate text-xs text-red-400">{resendErr}</span>}
+        <span className="w-full text-[11px] text-white/30">
+          Borra el registro de envío y reenvía el email del cuadro completo a todos los participantes del grupo.
         </span>
       </div>
     </div>
