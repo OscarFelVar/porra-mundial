@@ -331,6 +331,7 @@ export async function dispatchDailyReminders(): Promise<{ sent: number; skipped?
   const { data: matchData } = await supabase
     .from("matches")
     .select("id, kickoff_at, home:home_team_id ( name ), away:away_team_id ( name )")
+    .eq("phase", "grupos")
     .order("kickoff_at", { ascending: true })
   const openMatches = (matchData ?? []).filter((m) => {
     const k = new Date(m.kickoff_at as string).getTime()
