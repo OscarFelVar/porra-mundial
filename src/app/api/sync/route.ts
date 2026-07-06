@@ -154,6 +154,13 @@ async function syncMatches(teamMap: Record<string, string>) {
     if (advErr) throw new Error(`set advancing ${k.external_id}: ${advErr.message}`)
   }
 
+  // Recalcular puntos del bracket tras actualizar advancing_team_id.
+  // El trigger on_match_finished lo hace por fila, pero puede no disparar
+  // si el advancing se fija en un sync posterior al que marcó el partido finished.
+  if (knockoutWinners.length > 0) {
+    await supabase.rpc("calculate_bracket_points")
+  }
+
   return rows.length
 }
 

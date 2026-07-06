@@ -172,21 +172,51 @@ export default async function BracketPage({
   }
   const teams = [...teamsMap.values()]
 
-  // Mapa round:slot → partido para mostrar la llave completa en "Mis picks"
+  // Mapa round:slot → partido, construido siguiendo el árbol del cuadro.
+  // Slot N de cada ronda = cruce entre el ganador de prev_round:N*2 y prev_round:N*2+1.
+  // Esto garantiza que el orden visual coincide con la estructura del bracket rellenable,
+  // no con el orden cronológico de kickoff (que puede diferir).
   type MatchSide = { home_team: BracketMatch["home_team"]; away_team: BracketMatch["away_team"] }
-  const matchBySlot = new Map<string, MatchSide>()
-  const phaseOrders: { phase: string; sorter: (a: BracketMatch, b: BracketMatch) => number }[] = [
-    { phase: "dieciseisavos", sorter: (a, b) => parseInt(a.external_id ?? "0") - parseInt(b.external_id ?? "0") },
-    { phase: "octavos",       sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
-    { phase: "cuartos",       sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
-    { phase: "semifinal",     sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
-    { phase: "final",         sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
-    { phase: "tercer_puesto", sorter: (a, b) => a.kickoff_at.localeCompare(b.kickoff_at) },
+  const matchBySlot    = new Map<string, MatchSide>()
+  const slotAdvancing  = new Map<string, string>()   // "round:slot" → advancing_team_id
+
+  // Dieciseisavos: criterio de orden idéntico al bracket rellenable (external_id)
+  const r32 = knockout
+    .filter((m) => m.phase === "dieciseisavos")
+    .sort((a, b) => parseInt(a.external_id ?? "0") - parseInt(b.external_id ?? "0"))
+
+  r32.forEach((m, i) => {
+    matchBySlot.set(`dieciseisavos:${i}`, { home_team: m.home_team, away_team: m.away_team })
+    if (m.advancing_team_id) slotAdvancing.set(`dieciseisavos:${i}`, m.advancing_team_id)
+  })
+
+  // Rondas del árbol: octavos → cuartos → semifinal → final
+  const bracketRounds = [
+    { phase: "octavos",   count: 8, prev: "dieciseisavos" },
+    { phase: "cuartos",   count: 4, prev: "octavos"       },
+    { phase: "semifinal", count: 2, prev: "cuartos"       },
+    { phase: "final",     count: 1, prev: "semifinal"     },
   ]
-  for (const { phase, sorter } of phaseOrders) {
-    knockout.filter((m) => m.phase === phase).sort(sorter).forEach((m, i) => {
-      matchBySlot.set(`${phase}:${i}`, { home_team: m.home_team, away_team: m.away_team })
-    })
+  for (const { phase, count, prev } of bracketRounds) {
+    const phaseMatches = knockout.filter((m) => m.phase === phase)
+    for (let slot = 0; slot < count; slot++) {
+      const teamA = slotAdvancing.get(`${prev}:${slot * 2}`)    ?? null
+      const teamB = slotAdvancing.get(`${prev}:${slot * 2 + 1}`) ?? null
+      if (!teamA || !teamB) continue
+      const match = phaseMatches.find((m) =>
+        (m.home_team?.id === teamA && m.away_team?.id === teamB) ||
+        (m.home_team?.id === teamB && m.away_team?.id === teamA)
+      )
+      if (!match) continue
+      matchBySlot.set(`${phase}:${slot}`, { home_team: match.home_team, away_team: match.away_team })
+      if (match.advancing_team_id) slotAdvancing.set(`${phase}:${slot}`, match.advancing_team_id)
+    }
+  }
+
+  // Tercer puesto: los perdedores de semifinal, la API ya asigna los equipos directamente
+  const tercerPuesto = knockout.find((m) => m.phase === "tercer_puesto")
+  if (tercerPuesto) {
+    matchBySlot.set("tercer_puesto:0", { home_team: tercerPuesto.home_team, away_team: tercerPuesto.away_team })
   }
 
   return (
